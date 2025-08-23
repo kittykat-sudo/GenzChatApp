@@ -1,3 +1,5 @@
+import 'package:chat_drop/core/theme/app_colors.dart';
+import 'package:chat_drop/core/theme/app_text_styles.dart';
 import 'package:flutter/material.dart';
 import 'package:chat_drop/features/home/widgets/header_widget.dart';
 import 'package:chat_drop/features/home/widgets/search_widget.dart';

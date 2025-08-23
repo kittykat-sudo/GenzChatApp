@@ -1,8 +1,28 @@
+import 'package:chat_drop/features/auth/presentation/screens/qr_generator_screen.dart';
+import 'package:chat_drop/features/auth/presentation/screens/qr_scanner_screen.dart';
 import 'package:chat_drop/features/home/presentation/home_screen.dart';
 import 'package:chat_drop/features/chat/presentation/chat_screen.dart';
-import 'package:chat_drop/features/auth/presentation/qr_screen.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+
+CustomTransitionPage<T> _buildFadeTransition<T>({
+  required BuildContext context,
+  required GoRouterState state,
+  required Widget child,
+}) {
+  return CustomTransitionPage<T>(
+    key: state.pageKey,
+    child: child,
+    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+      // Fade Transition
+      return FadeTransition(
+        opacity: CurveTween(curve: Curves.easeInOutCirc).animate(animation),
+        child: child,
+      );
+    },
+  );
+}
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
@@ -19,9 +39,24 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const ChatScreen(),
       ),
       GoRoute(
-        path: '/qr', // Make sure this route exists
-        name: 'qr',
-        builder: (context, state) => const QRScreen(),
+        path: '/qr-generator',
+        name: 'qr-generator',
+        pageBuilder:
+            (context, state) => _buildFadeTransition(
+              context: context,
+              state: state,
+              child: const QrGeneratorScreen(),
+            ),
+      ),
+      GoRoute(
+        path: '/qr-scanner',
+        name: 'qr-scanner',
+        pageBuilder:
+            (context, state) => _buildFadeTransition(
+              context: context,
+              state: state,
+              child: const QrScannerScreen(),
+            ),
       ),
     ],
   );

@@ -4,6 +4,12 @@ import 'package:flutter/material.dart';
 class AppTextStyles {
   AppTextStyles._();
 
+  static const TextStyle headingXL = TextStyle(
+    fontSize: 35,
+    fontWeight: FontWeight.bold,
+    color: AppColors.textDark
+  );
+
   static const TextStyle heading = TextStyle(
     fontSize: 28,
     fontWeight: FontWeight.bold,
