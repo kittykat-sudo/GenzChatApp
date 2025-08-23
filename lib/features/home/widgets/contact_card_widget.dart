@@ -26,13 +26,6 @@ class ContactCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 4.0),
-      decoration: BoxDecoration(
-        color:
-            unreadCount != null
-                ? AppColors.primaryYellow.withOpacity(0.3)
-                : Colors.transparent,
-        borderRadius: BorderRadius.circular(8),
-      ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
