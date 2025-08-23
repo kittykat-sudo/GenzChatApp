@@ -1,8 +1,7 @@
 import 'package:chat_drop/core/theme/app_colors.dart';
 import 'package:chat_drop/core/theme/app_text_styles.dart';
-// import 'package:chat_drop/core/widgets/retro_button.dart';
+import 'package:chat_drop/core/widgets/retro_button.dart';
 import 'package:chat_drop/features/auth/presentation/providers/auth_providers.dart';
-import 'package:chat_drop/features/auth/widgets/retro_home_button.dart';
 import 'package:chat_drop/features/auth/widgets/retro_label.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -93,43 +92,32 @@ class QrGeneratorScreen extends ConsumerWidget {
                     const Spacer(),
 
                     // Bottom Button
-                    // RetroButton(
-                    //   text: "Scan my friend's QR",
-                    //   onPressed: () {
-                    //     context.push('/qr-scanner');
-                    //   },
-                    //   backgroundColor: AppColors.accentPink,
-                    //   width: double.infinity,
-                    // ),
-                    ElevatedButton(
+                    RetroButton(
+                      text: "Scan my friend's QR",
                       onPressed: () {
-                        // Navigate back to the QR Generator screen
                         context.push('/qr-scanner');
                       },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primaryYellow,
-                        foregroundColor: AppColors.textDark,
-                        side: const BorderSide(
-                          color: AppColors.border,
-                          width: 2,
-                        ),
-                        elevation: 4,
-                        shadowColor: AppColors.border,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 32,
-                          vertical: 16,
-                        ),
-                      ),
-                      child: const Text("My QR", style: AppTextStyles.body),
+                      backgroundColor: AppColors.accentPink,
+                      width: 250.00,
                     ),
                     const SizedBox(height: 20),
                   ],
                 ),
               ),
-              const Positioned(top: 20, left: 20, child: RetroHomeButton()),
+              Positioned(
+                top: 20,
+                left: 20,
+                child: RetroButton(
+                  text: '',
+                  icon: Icons.home_outlined,
+                  onPressed: () {
+                    context.go('/');
+                  },
+                  backgroundColor: AppColors.accentPink,
+                  width: 48,
+                  height: 48,
+                ),
+              ),
             ],
           ),
         ),

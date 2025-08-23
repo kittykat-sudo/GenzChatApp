@@ -39,7 +39,7 @@ class HeaderWidget extends StatelessWidget {
             text: '',
             icon: Icons.qr_code,
             onPressed: () {
-              context.push('/qr');
+              context.push('/qr-generator');
             },
             backgroundColor: AppColors.accentPink,
             width: 48,
