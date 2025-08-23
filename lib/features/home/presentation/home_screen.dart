@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:chat_drop/features/home/presentation/widgets/header_widget.dart';
-import 'package:chat_drop/features/home/presentation/widgets/search_widget.dart';
-import 'package:chat_drop/features/home/presentation/widgets/contact_list_widget.dart';
+import 'package:chat_drop/features/home/widgets/header_widget.dart';
+import 'package:chat_drop/features/home/widgets/search_widget.dart';
+import 'package:chat_drop/features/home/widgets/contact_list_widget.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});

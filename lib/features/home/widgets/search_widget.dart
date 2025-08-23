@@ -5,11 +5,7 @@ class SearchWidget extends StatelessWidget {
   final Function(String)? onChanged;
   final String? hintText;
 
-  const SearchWidget({
-    super.key,
-    this.onChanged,
-    this.hintText,
-  });
+  const SearchWidget({super.key, this.onChanged, this.hintText});
 
   @override
   Widget build(BuildContext context) {
