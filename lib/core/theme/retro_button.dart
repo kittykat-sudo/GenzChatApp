@@ -23,6 +23,9 @@ class RetroButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Check if this is an icon-only button
+    bool isIconOnly = text.isEmpty && icon != null;
+
     return Container(
       width: width,
       height: height,
@@ -44,29 +47,47 @@ class RetroButton extends StatelessWidget {
         child: InkWell(
           onTap: onPressed,
           borderRadius: BorderRadius.circular(8),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                if (icon != null) ...[
-                  Icon(icon, color: textColor ?? AppColors.textDark, size: 20),
-                  const SizedBox(width: 8),
-                ],
-                Text(
-                  text,
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: textColor ?? AppColors.textDark,
-                    fontFamily: "ZillaSlab",
+          child:
+              isIconOnly
+                  ? Center(
+                    // Center the icon for icon-only buttons
+                    child: Icon(
+                      icon,
+                      color: textColor ?? AppColors.textDark,
+                      size: 24,
+                    ),
+                  )
+                  : Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 16,
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        if (icon != null) ...[
+                          Icon(
+                            icon,
+                            color: textColor ?? AppColors.textDark,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 8),
+                        ],
+                        if (text.isNotEmpty)
+                          Text(
+                            text,
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: textColor ?? AppColors.textDark,
+                              fontFamily: "ZillaSlab",
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                      ],
+                    ),
                   ),
-                  textAlign: TextAlign.center,
-                ),
-              ],
-            ),
-          ),
         ),
       ),
     );
