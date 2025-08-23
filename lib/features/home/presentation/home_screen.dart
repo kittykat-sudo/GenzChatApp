@@ -1,3 +1,5 @@
+import 'package:chat_drop/core/theme/app_colors.dart';
+import 'package:chat_drop/core/theme/app_text_styles.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -19,17 +21,11 @@ class HomeScreen extends StatelessWidget {
                   Container(
                     width: 48,
                     height: 48,
-                    decoration: BoxDecoration(
-                      
-                    ),
+                    decoration: BoxDecoration(),
                     child: Padding(
                       padding: const EdgeInsets.all(8.0),
                       child: SvgPicture.asset(
                         'assets/images/logo.svg',
-                        colorFilter: const ColorFilter.mode(
-                          Colors.black,
-                          BlendMode.srcIn,
-                        ),
                       ),
                     ),
                   ),
@@ -42,6 +38,30 @@ class HomeScreen extends StatelessWidget {
                       fontWeight: FontWeight.bold,
                       color: Colors.black,
                     ),
+                  ),
+
+                  const SizedBox(width: 30,),
+
+                  ElevatedButton(
+                    onPressed: () {
+                      // Navigate back to the QR Generator screen
+                      context.push('/qr-generator');
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primaryYellow,
+                      foregroundColor: AppColors.textDark,
+                      side: const BorderSide(color: AppColors.border, width: 2),
+                      elevation: 4,
+                      shadowColor: AppColors.border,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 32,
+                        vertical: 16,
+                      ),
+                    ),
+                    child: const Text("My QR", style: AppTextStyles.body),
                   ),
                 ],
               ),
