@@ -1,3 +1,4 @@
+import 'package:chat_drop/core/theme/app_theme.dart';
 import 'package:chat_drop/routes/app_routes.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -17,10 +18,7 @@ class ChatDrop extends ConsumerWidget {
       debugShowCheckedModeBanner: false,
       title: 'ChatDrop',
       routerConfig: router,
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-        scaffoldBackgroundColor: const Color.fromARGB(255, 255, 248, 235),
-      ),
+      theme: appTheme
     );
   }
 }
