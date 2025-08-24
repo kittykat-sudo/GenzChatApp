@@ -9,16 +9,18 @@ class RetroButton extends StatelessWidget {
   final double? width;
   final double? height;
   final IconData? icon;
+  final Widget? child;
 
   const RetroButton({
     super.key,
-    required this.text,
+    this.text = '',
     this.onPressed,
     this.backgroundColor,
     this.textColor,
     this.width,
     this.height,
     this.icon,
+    this.child,
   });
 
   @override
@@ -62,31 +64,42 @@ class RetroButton extends StatelessWidget {
                       horizontal: 24,
                       vertical: 16,
                     ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        if (icon != null) ...[
-                          Icon(
-                            icon,
-                            color: textColor ?? AppColors.textDark,
-                            size: 20,
-                          ),
-                          const SizedBox(width: 8),
-                        ],
-                        if (text.isNotEmpty)
-                          Text(
-                            text,
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: textColor ?? AppColors.textDark,
-                              fontFamily: "ZillaSlab",
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                      ],
-                    ),
+
+                    // Check if a child is provide
+                    child:
+                        child ??
+                        (isIconOnly
+                            ? Center(
+                              child: Icon(
+                                icon,
+                                color: textColor ?? AppColors.textDark,
+                                size: 24,
+                              ),
+                            )
+                            : Row(
+                              mainAxisSize: MainAxisSize.min,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                if (icon != null) ...[
+                                  Icon(
+                                    icon,
+                                    color: textColor ?? AppColors.textDark,
+                                    size: 20,
+                                  ),
+                                  const SizedBox(width: 8),
+                                ],
+                                if (text.isNotEmpty)
+                                  Text(
+                                    text,
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      color: textColor ?? AppColors.textDark,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                              ],
+                            )),
                   ),
         ),
       ),

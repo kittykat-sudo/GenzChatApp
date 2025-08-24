@@ -1,25 +1,80 @@
 import 'package:chat_drop/core/theme/app_colors.dart';
 import 'package:chat_drop/core/theme/app_text_styles.dart';
+import 'package:chat_drop/core/utils/retro_snackbar.dart';
 import 'package:chat_drop/core/widgets/retro_button.dart';
+import 'package:chat_drop/core/widgets/retro_loading_indicator.dart';
+import 'package:chat_drop/features/auth/presentation/providers/auth_providers.dart';
 import 'package:chat_drop/features/auth/widgets/retro_text_field.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:go_router/go_router.dart';
 
-class NameRegistrationScreen extends StatefulWidget {
+class NameRegistrationScreen extends ConsumerStatefulWidget {
   const NameRegistrationScreen({super.key});
 
   @override
-  State<NameRegistrationScreen> createState() => _NameRegistrationScreenState();
+  ConsumerState<NameRegistrationScreen> createState() =>
+      _NameRegistrationScreenState();
 }
 
-class _NameRegistrationScreenState extends State<NameRegistrationScreen> {
+class _NameRegistrationScreenState
+    extends ConsumerState<NameRegistrationScreen> {
   final TextEditingController nameController = TextEditingController();
+  bool _isLoading = false;
 
   @override
   void dispose() {
     nameController.dispose();
     super.dispose();
+  }
+
+  // Register a new user annoymously and setting user's name
+  Future<void> _registerUser() async {
+    final name = nameController.text.trim();
+    if (name.isEmpty) {
+      showRetroSnackbar(
+        context: context,
+        message: "Error 404: Name Not Found.",
+        type: SnackbarType.error,
+      );
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final authRepository = ref.read(authRepositoryProvider);
+      final userCredential = await authRepository.signInAnonymously();
+      await authRepository.registerUserName(name);
+      print("UID: ${userCredential.user?.uid}, Name: $name");
+
+      if (mounted) {
+        showRetroSnackbar(
+          context: context,
+          message: "Welcome, $name!",
+          type: SnackbarType.success,
+        );
+        context.go('/');
+      }
+    } catch (e) {
+      // Show error if registration failed.
+      if (mounted) {
+        showRetroSnackbar(
+          context: context,
+          message: "Failed to register: $e",
+          type: SnackbarType.error,
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   @override
@@ -55,6 +110,7 @@ class _NameRegistrationScreenState extends State<NameRegistrationScreen> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       SizedBox(height: 10),
+
                       // Logo Section
                       SizedBox(
                         width: 120,
@@ -70,7 +126,7 @@ class _NameRegistrationScreenState extends State<NameRegistrationScreen> {
                       const Text('ChatDrop', style: AppTextStyles.headingXL),
                       const SizedBox(height: 60),
 
-                      // const Spacer(),
+                      // Middle section
                       const SizedBox(
                         width: 250,
                         child: Text(
@@ -79,8 +135,9 @@ class _NameRegistrationScreenState extends State<NameRegistrationScreen> {
                           textAlign: TextAlign.center,
                         ),
                       ),
-
                       const SizedBox(height: 20),
+
+                      // Name input section
                       SizedBox(
                         width: 250,
                         child: RetroTextField(
@@ -90,14 +147,17 @@ class _NameRegistrationScreenState extends State<NameRegistrationScreen> {
                       ),
 
                       const Expanded(child: SizedBox()),
+
+                      // Register button section
                       RetroButton(
                         text: "Join the chat  >",
-                        onPressed: () {
-                          // TODO: Add logic to save the name
-                          context.go('/');
-                        },
+                        onPressed: _isLoading ? null : _registerUser,
                         backgroundColor: AppColors.accentPink,
                         width: double.infinity,
+                        child:
+                            _isLoading
+                                ? const RetroLoadingIndicator(size: 8)
+                                : null,
                       ),
                     ],
                   ),

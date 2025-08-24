@@ -7,9 +7,10 @@ class AuthRemoteDatasource {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final Uuid _uuid = const Uuid();
 
-  Future<String> signInAnonymously() async {
+  // Sign in anonymously and return full usercredential
+  Future<UserCredential> signInAnonymously() async {
     final userCredential = await _auth.signInAnonymously();
-    return userCredential.user!.uid;
+    return userCredential;
   }
 
   Future<String> createSession() async {
@@ -31,6 +32,24 @@ class AuthRemoteDatasource {
       await _firestore.collection('session').doc(sessionId).update({
         'users': FieldValue.arrayUnion([user.uid]),
       });
+    }
+  }
+
+  // Set user's name to annonymous registered user.
+  Future<void> registerUserName(String name) async {
+    final user = _auth.currentUser;
+    if (user != null) {
+      // Update FirebaseAuth displayName
+      await user.updateDisplayName(name);
+
+      // Save user info in Firestore
+      await _firestore.collection('users').doc(user.uid).set({
+        'name': name,
+        'uid': user.uid,
+      });
+
+      // For debug
+      print("✅ Registered User -> ID: ${user.uid}, Name: $name");
     }
   }
 }
