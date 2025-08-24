@@ -1,5 +1,6 @@
 import 'package:chat_drop/core/theme/app_colors.dart';
 import 'package:chat_drop/core/theme/app_text_styles.dart';
+import 'package:chat_drop/core/utils/retro_snackbar.dart';
 import 'package:chat_drop/core/widgets/retro_button.dart';
 import 'package:chat_drop/features/auth/presentation/providers/auth_providers.dart';
 import 'package:chat_drop/features/auth/widgets/retro_label.dart';
@@ -81,12 +82,10 @@ class QrScannerScreen extends ConsumerWidget {
                                 }
                               } catch (e) {
                                 if (context.mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(
-                                        'Failed to join session: $e',
-                                      ),
-                                    ),
+                                  showRetroSnackbar(
+                                    context: context,
+                                    message: 'Failed to join session: $e',
+                                    type: SnackbarType.error,
                                   );
                                 }
                               }

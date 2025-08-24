@@ -14,7 +14,6 @@ class HomeScreen extends StatelessWidget {
           children: [
             HeaderWidget(),
             SearchWidget(),
-            SizedBox(height: 24),
             ContactListWidget(),
           ],
         ),

@@ -1,6 +1,7 @@
 import 'package:chat_drop/core/theme/app_colors.dart';
 import 'package:chat_drop/core/theme/app_text_styles.dart';
 import 'package:chat_drop/core/widgets/retro_button.dart';
+import 'package:chat_drop/core/widgets/retro_loading_indicator.dart';
 import 'package:chat_drop/features/auth/presentation/providers/auth_providers.dart';
 import 'package:chat_drop/features/auth/widgets/retro_label.dart';
 import 'package:flutter/material.dart';
@@ -71,7 +72,7 @@ class QrGeneratorScreen extends ConsumerWidget {
                       child: session.when(
                         loading:
                             () => const Center(
-                              child: CircularProgressIndicator(),
+                              child: RetroLoadingIndicator(),
                             ),
                         error:
                             (err, stack) => Center(child: Text('Error: $err')),

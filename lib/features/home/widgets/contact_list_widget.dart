@@ -16,10 +16,10 @@ class ContactListWidget extends StatelessWidget {
           // Friends Section
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 20.0),
-            child: Text('Friends', style: AppTextStyles.subHeading),
+            child: Text('Friends', style: AppTextStyles.heading),
           ),
 
-          const SizedBox(height: 16),
+          const SizedBox(height: 8),
 
           Expanded(
             child: ListView(

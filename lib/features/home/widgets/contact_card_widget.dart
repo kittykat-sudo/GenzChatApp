@@ -24,15 +24,19 @@ class ContactCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 4.0),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap ?? () => context.push('/chat'),
-          borderRadius: BorderRadius.circular(8),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap ?? () => context.push('/chat'),
+        splashColor: AppColors.accentPink.withOpacity(0.6),
+        child: Container(
+          width: double.infinity, 
+          padding: const EdgeInsets.symmetric(vertical: 12.0),
           child: Padding(
-            padding: const EdgeInsets.all(12.0),
+            padding: const EdgeInsets.symmetric(
+              horizontal: 20.0,
+              vertical: 2.0,
+            ),
             child: Row(
               children: [
                 // Profile Picture with Online Status
@@ -53,7 +57,6 @@ class ContactCard extends StatelessWidget {
                         ),
                       ),
                     ),
-                    // Online Status Indicator
                     if (isOnline)
                       Positioned(
                         bottom: 2,
@@ -64,23 +67,8 @@ class ContactCard extends StatelessWidget {
                           decoration: const BoxDecoration(
                             color: AppColors.onlineStatus,
                             shape: BoxShape.circle,
-                            border: Border(
-                              top: BorderSide(
-                                color: AppColors.background,
-                                width: 2,
-                              ),
-                              right: BorderSide(
-                                color: AppColors.background,
-                                width: 2,
-                              ),
-                              bottom: BorderSide(
-                                color: AppColors.background,
-                                width: 2,
-                              ),
-                              left: BorderSide(
-                                color: AppColors.background,
-                                width: 2,
-                              ),
+                            border: Border.fromBorderSide(
+                              BorderSide(color: AppColors.background, width: 2),
                             ),
                           ),
                         ),
@@ -98,7 +86,7 @@ class ContactCard extends StatelessWidget {
                       Text(
                         name,
                         style: TextStyle(
-                          fontSize: 16,
+                          fontSize: 18,
                           fontWeight: FontWeight.w600,
                           color: AppColors.textDark,
                         ),
@@ -107,7 +95,7 @@ class ContactCard extends StatelessWidget {
                       Text(
                         message,
                         style: TextStyle(
-                          fontSize: 14,
+                          fontSize: 15,
                           color:
                               isRead ? AppColors.textGrey : AppColors.textDark,
                           fontWeight:
@@ -119,7 +107,6 @@ class ContactCard extends StatelessWidget {
                   ),
                 ),
 
-                // Unread Message Badge
                 if (unreadCount != null)
                   Container(
                     padding: const EdgeInsets.symmetric(
@@ -134,8 +121,6 @@ class ContactCard extends StatelessWidget {
                         BoxShadow(
                           color: AppColors.border,
                           offset: const Offset(1, 1),
-                          blurRadius: 0,
-                          spreadRadius: 0,
                         ),
                       ],
                     ),
