@@ -1,10 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:chat_drop/core/theme/app_colors.dart';
+import 'package:chat_drop/features/chat/domain/message.dart';
 
 class ChatMessageWidget extends StatelessWidget {
-  final ChatMessage message;
+  final Message message;
+  final bool isMe;
 
-  const ChatMessageWidget({super.key, required this.message});
+  const ChatMessageWidget({
+    super.key,
+    required this.message,
+    required this.isMe,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -12,9 +18,9 @@ class ChatMessageWidget extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 16),
       child: Row(
         mainAxisAlignment:
-            message.isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
+            isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
         children: [
-          if (!message.isMe) const SizedBox(width: 0),
+          if (!isMe) const SizedBox(width: 0),
           ConstrainedBox(
             constraints: BoxConstraints(
               maxWidth: MediaQuery.of(context).size.width * 0.7,
@@ -23,19 +29,16 @@ class ChatMessageWidget extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
-                color:
-                    message.isMe
-                        ? AppColors.accentPink
-                        : AppColors.primaryYellow,
+                color: isMe ? AppColors.accentPink : AppColors.primaryYellow,
                 borderRadius: BorderRadius.only(
                   topLeft: const Radius.circular(12),
                   topRight: const Radius.circular(12),
                   bottomLeft:
-                      message.isMe
+                      isMe
                           ? const Radius.circular(12)
                           : const Radius.circular(4),
                   bottomRight:
-                      message.isMe
+                      isMe
                           ? const Radius.circular(4)
                           : const Radius.circular(12),
                 ),
@@ -49,38 +52,37 @@ class ChatMessageWidget extends StatelessWidget {
                   ),
                 ],
               ),
-              child:
-                  message.isVoice ? _buildVoiceMessage() : _buildTextMessage(),
+              child: _buildTextMessage(),
             ),
           ),
-          if (message.isMe) const SizedBox(width: 0),
+          if (isMe) const SizedBox(width: 0),
         ],
       ),
     );
   }
 
-  Widget _buildVoiceMessage() {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        const Icon(Icons.graphic_eq, color: AppColors.textDark, size: 20),
-        const SizedBox(width: 8),
-        Container(
-          width: 100,
-          height: 20,
-          decoration: BoxDecoration(
-            color: AppColors.textDark.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(4),
-          ),
-          child: CustomPaint(painter: VoiceWavePainter()),
-        ),
-      ],
-    );
-  }
+  // Widget _buildVoiceMessage() {
+  //   return Row(
+  //     mainAxisSize: MainAxisSize.min,
+  //     children: [
+  //       const Icon(Icons.graphic_eq, color: AppColors.textDark, size: 20),
+  //       const SizedBox(width: 8),
+  //       Container(
+  //         width: 100,
+  //         height: 20,
+  //         decoration: BoxDecoration(
+  //           color: AppColors.textDark.withOpacity(0.1),
+  //           borderRadius: BorderRadius.circular(4),
+  //         ),
+  //         child: CustomPaint(painter: VoiceWavePainter()),
+  //       ),
+  //     ],
+  //   );
+  // }
 
   Widget _buildTextMessage() {
     return Text(
-      message.text,
+      message.content, // adjust if your domain model uses another field name
       style: const TextStyle(
         fontSize: 16,
         color: AppColors.textDark,
@@ -88,14 +90,6 @@ class ChatMessageWidget extends StatelessWidget {
       ),
     );
   }
-}
-
-class ChatMessage {
-  final String text;
-  final bool isMe;
-  final bool isVoice;
-
-  ChatMessage({required this.text, required this.isMe, this.isVoice = false});
 }
 
 class VoiceWavePainter extends CustomPainter {

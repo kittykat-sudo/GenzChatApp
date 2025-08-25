@@ -3,7 +3,7 @@ import 'package:chat_drop/features/auth/presentation/screens/name_registration_s
 import 'package:chat_drop/features/auth/presentation/screens/qr_generator_screen.dart';
 import 'package:chat_drop/features/auth/presentation/screens/qr_scanner_screen.dart';
 import 'package:chat_drop/features/home/presentation/home_screen.dart';
-import 'package:chat_drop/features/chat/presentation/chat_screen.dart';
+import 'package:chat_drop/features/chat/presentation/screens/chat_screen.dart';
 import 'package:chat_drop/features/profile/presentation/friends_profile_screen.dart';
 import 'package:chat_drop/features/profile/presentation/edit_name_screen.dart';
 import 'package:flutter/material.dart';
