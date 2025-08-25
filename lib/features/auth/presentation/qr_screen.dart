@@ -26,7 +26,7 @@ class QRScreen extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 // Logo Section
-                Container(
+                SizedBox(
                   width: 120,
                   height: 120,
 

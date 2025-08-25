@@ -17,17 +17,16 @@ class HeaderWidget extends StatelessWidget {
           Container(
             width: 55,
             height: 55,
-            child: Padding(
-              padding: const EdgeInsets.all(8.0),
+            child: Center(
               child: SvgPicture.asset(
                 'assets/images/logo.svg',
-                width: 32,
-                height: 32,
+                width: 55,
+                height: 55,
                 fit: BoxFit.contain,
                 placeholderBuilder:
                     (context) => const Icon(
                       Icons.chat_bubble_outline,
-                      color: Color.fromARGB(0, 51, 51, 51),
+                      color: AppColors.textDark,
                       size: 24,
                     ),
               ),
@@ -35,11 +34,12 @@ class HeaderWidget extends StatelessWidget {
           ),
           const SizedBox(width: 12),
           const Expanded(child: Text('ChatDrop', style: AppTextStyles.heading)),
+          // Edit Name Button (replacing QR button)
           RetroButton(
             text: '',
-            icon: Icons.qr_code,
+            icon: Icons.edit,
             onPressed: () {
-              context.push('/qr');
+              context.push('/edit-name');
             },
             backgroundColor: AppColors.accentPink,
             width: 48,

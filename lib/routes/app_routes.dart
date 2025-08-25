@@ -2,7 +2,8 @@ import 'package:chat_drop/features/auth/presentation/screens/qr_generator_screen
 import 'package:chat_drop/features/auth/presentation/screens/qr_scanner_screen.dart';
 import 'package:chat_drop/features/home/presentation/home_screen.dart';
 import 'package:chat_drop/features/chat/presentation/chat_screen.dart';
-import 'package:chat_drop/features/profile/presentation/profile_screen.dart';
+import 'package:chat_drop/features/profile/presentation/friends_profile_screen.dart';
+import 'package:chat_drop/features/profile/presentation/edit_name_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -63,6 +64,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/profile', // Add profile route
         name: 'profile',
         builder: (context, state) => const ProfileScreen(),
+      ),
+      GoRoute(
+        path: '/edit-name',
+        name: 'edit-name',
+        builder: (context, state) => const EditNameScreen(),
       ),
     ],
   );
