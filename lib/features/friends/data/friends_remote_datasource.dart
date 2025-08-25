@@ -22,64 +22,61 @@ class FriendsRemoteDatasource {
     
     return _friendsCollection
         .orderBy('lastMessageTime', descending: true)
-        .snapshots(includeMetadataChanges: false) // Avoid unnecessary updates
+        .snapshots()
         .map((snapshot) {
           if (kDebugMode) print('📦 Received ${snapshot.docs.length} friends from Firestore');
-          
-          final friends = <Friend>[];
-          for (final doc in snapshot.docs) {
+          return snapshot.docs.map((doc) {
             try {
-              final friend = Friend.fromFirestore(
+              return Friend.fromFirestore(
                 doc.data() as Map<String, dynamic>,
                 doc.id,
               );
-              friends.add(friend);
             } catch (e) {
               if (kDebugMode) print('❌ Error parsing friend document ${doc.id}: $e');
+              return null;
             }
-          }
-          return friends;
+          }).whereType<Friend>().toList();
         })
         .handleError((error) {
           if (kDebugMode) print('❌ Error in getFriendsStream: $error');
+          return <Friend>[];
         });
   }
 
   Future<void> initializeSampleFriendsIfNeeded() async {
+    if (kDebugMode) print('🔍 initializeSampleFriendsIfNeeded called');
+    
     if (_currentUserId.isEmpty) {
       if (kDebugMode) print('⚠️ Cannot initialize friends: No authenticated user');
-      return;
+      throw Exception('No authenticated user found');
     }
 
     try {
       if (kDebugMode) print('🔍 Checking if friends collection exists for user: $_currentUserId');
       
-      // Use a more efficient query
-      final snapshot = await _friendsCollection.limit(1).get(const GetOptions(source: Source.cache));
+      // Add timeout to prevent hanging
+      final snapshot = await _friendsCollection
+          .limit(1)
+          .get()
+          .timeout(const Duration(seconds: 10));
       
       if (snapshot.docs.isNotEmpty) {
-        if (kDebugMode) print('✅ Friends collection already exists');
-        return;
-      }
-
-      // Check server if cache is empty
-      final serverSnapshot = await _friendsCollection.limit(1).get();
-      if (serverSnapshot.docs.isNotEmpty) {
-        if (kDebugMode) print('✅ Friends collection exists on server');
+        if (kDebugMode) print('✅ Friends collection already exists with ${snapshot.docs.length} documents');
         return;
       }
 
       if (kDebugMode) print('🚀 Initializing sample friends for user: $_currentUserId');
-      
-      // Initialize in background without blocking
-      _initializeSampleFriends();
+      await _initializeSampleFriends();
       
     } catch (e) {
-      if (kDebugMode) print('❌ Error checking friends collection: $e');
+      if (kDebugMode) print('❌ Error checking/initializing friends: $e');
+      rethrow; // Let the caller handle the error
     }
   }
 
   Future<void> _initializeSampleFriends() async {
+    if (kDebugMode) print('📝 Creating sample friends data...');
+    
     final now = DateTime.now();
     final sampleFriends = [
       Friend(
@@ -110,55 +107,34 @@ class FriendsRemoteDatasource {
         unreadCount: 2,
         isRead: false,
       ),
-      Friend(
-        id: 'jane_cooper',
-        name: 'Jane Cooper',
-        avatar: '👩🏽‍🎨',
-        isOnline: false,
-        lastMessage: 'I think it\'s great. The vibrant...',
-        lastMessageTime: now.subtract(const Duration(hours: 2)),
-        unreadCount: 2,
-        isRead: false,
-      ),
-      Friend(
-        id: 'kristin_watson',
-        name: 'Kristin Watson',
-        avatar: '👩🏻‍💼',
-        isOnline: true,
-        lastMessage: 'It\'s like a never-ending groove.',
-        lastMessageTime: now.subtract(const Duration(hours: 3)),
-        isRead: true,
-      ),
-      Friend(
-        id: 'dianne_russell',
-        name: 'Dianne Russell',
-        avatar: '👩🏻‍🎤',
-        isOnline: false,
-        lastMessage: 'Speaking of which, I saw an art e...',
-        lastMessageTime: now.subtract(const Duration(days: 1)),
-        isRead: true,
-      ),
     ];
 
     try {
-      // Use batch write for better performance
+      if (kDebugMode) print('💾 Writing sample friends to Firestore...');
+      
       final batch = _firestore.batch();
       for (final friend in sampleFriends) {
         batch.set(_friendsCollection.doc(friend.id), friend.toFirestore());
       }
       
-      await batch.commit();
-      if (kDebugMode) print('✅ Sample friends batch write completed');
+      // Add timeout for batch write
+      await batch.commit().timeout(const Duration(seconds: 15));
+      if (kDebugMode) print('✅ Sample friends batch write completed successfully');
+      
     } catch (e) {
-      if (kDebugMode) print('❌ Error initializing sample friends: $e');
+      if (kDebugMode) print('❌ Error during batch write: $e');
+      rethrow;
     }
   }
 
-  // Optimized methods with error handling
+  // Other methods with proper error handling...
   Future<void> addFriend(Friend friend) async {
-    if (_currentUserId.isEmpty) return;
+    if (_currentUserId.isEmpty) {
+      throw Exception('No authenticated user');
+    }
     try {
       await _friendsCollection.doc(friend.id).set(friend.toFirestore());
+      if (kDebugMode) print('✅ Friend added: ${friend.name}');
     } catch (e) {
       if (kDebugMode) print('❌ Error adding friend: $e');
       rethrow;
@@ -177,7 +153,6 @@ class FriendsRemoteDatasource {
     }
   }
 
-  // Other methods remain the same...
   Future<void> updateFriend(String friendId, Friend friend) async {
     if (_currentUserId.isEmpty) return;
     await _friendsCollection.doc(friendId).update(friend.toFirestore());

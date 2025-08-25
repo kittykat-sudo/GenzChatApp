@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:go_router/go_router.dart';
 import 'package:chat_drop/core/widgets/retro_button.dart';
 import 'package:chat_drop/features/home/widgets/header_widget.dart';
@@ -25,24 +26,46 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     // Use schedulerBinding to avoid blocking initial render
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _initializeFriendsDataOptimized();
+      _checkAuthAndInitialize();
     });
+  }
+
+  void _checkAuthAndInitialize() async {
+    if (kDebugMode) print('🔐 Checking authentication state...');
+    
+    // Wait for Firebase Auth to be ready
+    final user = FirebaseAuth.instance.currentUser;
+    
+    if (user == null) {
+      if (kDebugMode) print('❌ No authenticated user found');
+      // Don't initialize friends if no user
+      return;
+    }
+    
+    if (kDebugMode) print('✅ User authenticated: ${user.uid}');
+    _initializeFriendsDataOptimized();
   }
 
   void _initializeFriendsDataOptimized() {
     if (!_hasInitialized && mounted) {
       _hasInitialized = true;
 
-      if (kDebugMode)
-        print('🔄 Starting optimized friends data initialization');
+      if (kDebugMode) print('🔄 Starting optimized friends data initialization');
 
-      // Use longer delay to ensure UI is fully rendered
-      Future.delayed(const Duration(milliseconds: 500), () async {
+      // Use longer delay to ensure UI is fully rendered and Firebase is ready
+      Future.delayed(const Duration(milliseconds: 1000), () async {
         if (mounted) {
           try {
+            // Double-check auth state before proceeding
+            final user = FirebaseAuth.instance.currentUser;
+            if (user == null) {
+              if (kDebugMode) print('⚠️ User not authenticated, skipping friends init');
+              return;
+            }
+
+            if (kDebugMode) print('🚀 Proceeding with friends initialization');
             await ref.read(initializeFriendsProvider.future);
-            if (kDebugMode)
-              print('✅ Friends initialization completed successfully');
+            if (kDebugMode) print('✅ Friends initialization completed successfully');
           } catch (e) {
             if (kDebugMode) print('❌ Friends initialization error: $e');
             // Don't rethrow - this is background initialization
