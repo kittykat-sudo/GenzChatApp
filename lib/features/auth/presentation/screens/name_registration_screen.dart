@@ -4,7 +4,7 @@ import 'package:chat_drop/core/utils/retro_snackbar.dart';
 import 'package:chat_drop/core/widgets/retro_button.dart';
 import 'package:chat_drop/core/widgets/retro_typing_dots.dart';
 import 'package:chat_drop/features/auth/presentation/providers/auth_providers.dart';
-import 'package:chat_drop/features/auth/widgets/retro_text_field.dart';
+import 'package:chat_drop/core/widgets/retro_text_field.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/svg.dart';

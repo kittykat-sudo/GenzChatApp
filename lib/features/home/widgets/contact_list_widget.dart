@@ -1,12 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:chat_drop/core/theme/app_colors.dart';
 import 'package:chat_drop/core/theme/app_text_styles.dart';
 import 'package:chat_drop/features/home/widgets/contact_card_widget.dart';
+import 'package:chat_drop/features/friends/presentation/providers/friends_providers.dart';
 
-class ContactListWidget extends StatelessWidget {
+class ContactListWidget extends ConsumerWidget {
   const ContactListWidget({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final friendsAsync = ref.watch(friendsStreamProvider);
+
     return Expanded(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -22,72 +29,164 @@ class ContactListWidget extends StatelessWidget {
           const SizedBox(height: 8),
 
           Expanded(
-            child: ListView(
-              children: [
-                ContactCard(
-                  name: 'Marvin McKinney',
-                  message: 'Hey, have you noticed how much...',
-                  avatar: '🧑🏿‍💼',
-                  isOnline: true,
-                  isRead: true,
-                ),
-                ContactCard(
-                  name: 'Wade Warren',
-                  message: 'Absolutely! It\'s fascinating how p...',
-                  avatar: '🧑🏼‍💼',
-                  isOnline: true,
-                  isRead: true,
-                ),
-                ContactCard(
-                  name: 'Eleanor Pena',
-                  message: 'Hey, have you noticed how...',
-                  avatar: '👨🏻‍💼',
-                  isOnline: true,
-                  unreadCount: 2,
-                  isRead: false,
-                ),
-                ContactCard(
-                  name: 'Jane Cooper',
-                  message: 'I think it\'s great. The vibrant...',
-                  avatar: '👩🏽‍🎨',
-                  isOnline: false,
-                  unreadCount: 2,
-                  isRead: false,
-                ),
-                ContactCard(
-                  name: 'Kristin Watson',
-                  message: 'It\'s like a never-ending groove.',
-                  avatar: '👩🏻‍💼',
-                  isOnline: true,
-                  isRead: true,
-                ),
-                ContactCard(
-                  name: 'Dianne Russell',
-                  message: 'Speaking of which, I saw an art e...',
-                  avatar: '👩🏻‍🎤',
-                  isOnline: false,
-                  isRead: true,
-                ),
-                ContactCard(
-                  name: 'Dianne Russell',
-                  message: 'Speaking of which, I saw an art e...',
-                  avatar: '👩🏻‍🎤',
-                  isOnline: false,
-                  isRead: true,
-                ),
-                ContactCard(
-                  name: 'Dianne Russell',
-                  message: 'Speaking of which, I saw an art e...',
-                  avatar: '👩🏻‍🎤',
-                  isOnline: false,
-                  isRead: true,
-                ),
+            child: friendsAsync.when(
+              data: (friends) {
+                if (friends.isEmpty) {
+                  return const _EmptyFriendsState();
+                }
 
-                const SizedBox(height: 16),
-              ],
+                return ListView.builder(
+                  // PERFORMANCE: Add these optimizations
+                  physics: const BouncingScrollPhysics(),
+                  cacheExtent: 200, // Cache more items for smoother scrolling
+                  itemCount: friends.length,
+                  itemBuilder: (context, index) {
+                    final friend = friends[index];
+                    return ContactCard(
+                      key: ValueKey(
+                        friend.id,
+                      ), // Add key for better performance
+                      name: friend.name,
+                      message: friend.lastMessage,
+                      avatar: friend.avatar,
+                      isOnline: friend.isOnline,
+                      isRead: friend.isRead,
+                      unreadCount:
+                          friend.unreadCount > 0 ? friend.unreadCount : null,
+                      onTap: () => _handleFriendTap(ref, friend.id, context),
+                    );
+                  },
+                );
+              },
+              loading: () => const _LoadingState(),
+              error:
+                  (error, stack) => _ErrorState(
+                    error: error,
+                    onRetry: () => ref.invalidate(friendsStreamProvider),
+                  ),
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  void _handleFriendTap(WidgetRef ref, String friendId, BuildContext context) {
+    // Use microtask to avoid blocking UI
+    Future.microtask(() {
+      try {
+        ref.read(friendsRepositoryProvider).markAsRead(friendId);
+      } catch (e) {
+        if (kDebugMode) print('Error marking as read: $e');
+      }
+    });
+
+    context.push('/chat');
+  }
+}
+
+// Separate widgets for better performance
+class _EmptyFriendsState extends StatelessWidget {
+  const _EmptyFriendsState();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Center(
+      child: Padding(
+        padding: EdgeInsets.all(20.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.people_outline, size: 64, color: AppColors.textGrey),
+            SizedBox(height: 16),
+            Text(
+              'No friends yet!',
+              style: TextStyle(
+                color: AppColors.textGrey,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            SizedBox(height: 8),
+            Text(
+              'Add some friends to start chatting!',
+              style: TextStyle(color: AppColors.textGrey, fontSize: 14),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _LoadingState extends StatelessWidget {
+  const _LoadingState();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Center(
+      child: Padding(
+        padding: EdgeInsets.all(40.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(
+              color: AppColors.accentPink,
+              strokeWidth: 3,
+            ),
+            SizedBox(height: 16),
+            Text(
+              'Loading friends...',
+              style: TextStyle(color: AppColors.textGrey, fontSize: 16),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ErrorState extends StatelessWidget {
+  final Object error;
+  final VoidCallback onRetry;
+
+  const _ErrorState({required this.error, required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    if (kDebugMode) print('Friends stream error: $error');
+
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(
+              Icons.error_outline,
+              size: 48,
+              color: AppColors.errorRed,
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Something went wrong!',
+              style: TextStyle(
+                color: AppColors.errorRed,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Error: ${error.toString()}',
+              style: const TextStyle(color: AppColors.errorRed, fontSize: 14),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(onPressed: onRetry, child: const Text('Retry')),
+          ],
+        ),
       ),
     );
   }
