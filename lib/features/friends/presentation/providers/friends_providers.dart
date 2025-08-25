@@ -22,20 +22,3 @@ final friendsStreamProvider = StreamProvider<List<Friend>>((ref) {
   final repository = ref.watch(friendsRepositoryProvider);
   return repository.getFriendsStream();
 });
-
-// OPTIMIZED: Background initialization with compute
-final initializeFriendsProvider = FutureProvider<void>((ref) async {
-  final dataSource = ref.watch(friendsRemoteDataSourceProvider);
-
-  // Run initialization in background to avoid blocking UI
-  if (kDebugMode) {
-    print('🔄 Starting friends initialization in background');
-  }
-
-  // Use compute for heavy operations if needed
-  await dataSource.initializeSampleFriendsIfNeeded();
-
-  if (kDebugMode) {
-    print('✅ Friends initialization completed');
-  }
-});
