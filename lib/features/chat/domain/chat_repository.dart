@@ -14,4 +14,11 @@ abstract class ChatRepository {
 
   // Get friend's name from session
   Future<String> getFriendName(String sessionId, String currentUserId);
+
+  // Message status methods - simplified without MessageStatus enum
+  Future<void> markMessageAsRead(String messageId);
+  Future<void> markAllMessagesAsRead(String sessionId, String currentUserId);
+  Future<void> markMessageAsDelivered(String messageId);
+  Future<void> updateMessageReadStatus(String messageId, bool isRead);
+  Future<void> updateMessageSentStatus(String messageId, bool isSent);
 }

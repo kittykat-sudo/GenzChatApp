@@ -12,4 +12,10 @@ abstract class AuthRepository {
 
   // Register a user with a name annonymously
   Future<void> registerUserName(String name);
+
+  // Update user's name
+  Future<void> updateUserName(String name);
+
+  // Get current user's name
+  Future<String?> getCurrentUserName();
 }

@@ -114,4 +114,21 @@ class DatabaseHelper {
     }
     _controllers.clear();
   }
+
+  // Add/update these methods in your DatabaseHelper:
+
+  Future<void> markAllMessagesAsRead(
+    String sessionId,
+    String currentUserId,
+  ) async {
+    final db = await instance.database;
+    await db.update(
+      'messages',
+      {'isRead': 1},
+      where: 'sessionId = ? AND senderId != ? AND isRead = 0',
+      whereArgs: [sessionId, currentUserId],
+    );
+
+    _emitMessages(sessionId);
+  }
 }

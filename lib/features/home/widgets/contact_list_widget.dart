@@ -1,3 +1,5 @@
+import 'package:chat_drop/features/auth/presentation/providers/auth_providers.dart';
+import 'package:chat_drop/features/friends/domain/models/friend.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -35,25 +37,24 @@ class ContactListWidget extends ConsumerWidget {
                   return const _EmptyFriendsState();
                 }
 
+                print("Friend names: ${friends.map((f) => f.name).toList()}");
+
                 return ListView.builder(
-                  // PERFORMANCE: Add these optimizations
                   physics: const BouncingScrollPhysics(),
-                  cacheExtent: 200, // Cache more items for smoother scrolling
+                  cacheExtent: 200,
                   itemCount: friends.length,
                   itemBuilder: (context, index) {
                     final friend = friends[index];
                     return ContactCard(
-                      key: ValueKey(
-                        friend.id,
-                      ), // Add key for better performance
+                      key: ValueKey(friend.id),
                       name: friend.name,
-                      message: friend.lastMessage,
-                      avatar: friend.avatar,
+                      message: friend.lastMessage ?? 'No messages yet',
+                      avatar: friend.avatar ?? '😊', // Default avatar
                       isOnline: friend.isOnline,
                       isRead: friend.isRead,
                       unreadCount:
                           friend.unreadCount > 0 ? friend.unreadCount : null,
-                      onTap: () => _handleFriendTap(ref, friend.id, context),
+                      onTap: () => _handleFriendTap(ref, friend, context),
                     );
                   },
                 );
@@ -71,13 +72,26 @@ class ContactListWidget extends ConsumerWidget {
     );
   }
 
-  void _handleFriendTap(WidgetRef ref, String friendId, BuildContext context) {
+  void _handleFriendTap(WidgetRef ref, Friend friend, BuildContext context) {
     // Use microtask to avoid blocking UI
     Future.microtask(() {
       try {
-        ref.read(friendsRepositoryProvider).markAsRead(friendId);
+        // Mark friend as read
+        ref.read(friendActionsProvider).markAsRead(friend.id);
+
+        // Set the session ID if available
+        if (friend.sessionId != null) {
+          ref.read(sessionIdProvider.notifier).state = friend.sessionId;
+        }
+
+        // store the friend ID for the chat screen
+        ref.read(currentChatFriendIdProvider.notifier).state = friend.id;
+
+        print("Setting session ID: ${friend.sessionId}");
+        print("Setting friend ID: ${friend.id}");
+        print("Friend name: ${friend.name}");
       } catch (e) {
-        if (kDebugMode) print('Error marking as read: $e');
+        if (kDebugMode) print('Error handling friend tap: $e');
       }
     });
 
@@ -85,21 +99,25 @@ class ContactListWidget extends ConsumerWidget {
   }
 }
 
-// Separate widgets for better performance
+// Keep your existing _EmptyFriendsState, _LoadingState, and _ErrorState widgets...
 class _EmptyFriendsState extends StatelessWidget {
   const _EmptyFriendsState();
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
+    return Center(
       child: Padding(
-        padding: EdgeInsets.all(20.0),
+        padding: const EdgeInsets.all(20.0),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.people_outline, size: 64, color: AppColors.textGrey),
-            SizedBox(height: 16),
-            Text(
+            const Icon(
+              Icons.people_outline,
+              size: 64,
+              color: AppColors.textGrey,
+            ),
+            const SizedBox(height: 16),
+            const Text(
               'No friends yet!',
               style: TextStyle(
                 color: AppColors.textGrey,
@@ -107,11 +125,20 @@ class _EmptyFriendsState extends StatelessWidget {
                 fontWeight: FontWeight.bold,
               ),
             ),
-            SizedBox(height: 8),
-            Text(
-              'Add some friends to start chatting!',
+            const SizedBox(height: 8),
+            const Text(
+              'Scan a QR code to add friends!',
               style: TextStyle(color: AppColors.textGrey, fontSize: 14),
               textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () => context.push('/qr-scanner'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.accentPink,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Scan QR Code'),
             ),
           ],
         ),

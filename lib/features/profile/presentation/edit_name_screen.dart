@@ -1,23 +1,46 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:chat_drop/core/theme/app_colors.dart';
 import 'package:chat_drop/core/theme/app_text_styles.dart';
 import 'package:chat_drop/core/widgets/retro_button.dart';
 import 'package:chat_drop/core/widgets/retro_text_field.dart';
 import 'package:chat_drop/core/widgets/retro_typing_dots.dart';
 import 'package:chat_drop/core/utils/retro_snackbar.dart';
+import 'package:chat_drop/features/auth/presentation/providers/auth_providers.dart';
 
-class EditNameScreen extends StatefulWidget {
+class EditNameScreen extends ConsumerStatefulWidget {
   const EditNameScreen({super.key});
 
   @override
-  State<EditNameScreen> createState() => _EditNameScreenState();
+  ConsumerState<EditNameScreen> createState() => _EditNameScreenState();
 }
 
-class _EditNameScreenState extends State<EditNameScreen> {
+class _EditNameScreenState extends ConsumerState<EditNameScreen> {
   final TextEditingController nameController = TextEditingController();
   bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Load current user name when screen loads
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadCurrentUserName();
+    });
+  }
+
+  void _loadCurrentUserName() async {
+    try {
+      final currentUserNameAsync = ref.read(currentUserNameProvider);
+      final currentName = currentUserNameAsync;
+      if (mounted) {
+        nameController.text = currentName as String; 
+      }
+    } catch (e) {
+      print('Error loading current user name: $e');
+    }
+  }
 
   @override
   void dispose() {
@@ -36,30 +59,52 @@ class _EditNameScreenState extends State<EditNameScreen> {
       return;
     }
 
+    if (name.length < 2) {
+      showRetroSnackbar(
+        context: context,
+        message: "Name must be at least 2 characters long.",
+        type: SnackbarType.error,
+      );
+      return;
+    }
+
+    if (name.length > 30) {
+      showRetroSnackbar(
+        context: context,
+        message: "Name must be less than 30 characters.",
+        type: SnackbarType.error,
+      );
+      return;
+    }
+
     setState(() {
       _isLoading = true;
     });
 
     try {
-      // Simulate API call delay
-      await Future.delayed(const Duration(seconds: 1));
-
-      // Save the name logic here
-      print('Saving name: $name');
+      // Update the user's name using auth actions
+      final authActions = ref.read(authActionsProvider);
+      await authActions.updateUserName(name);
 
       if (mounted) {
         showRetroSnackbar(
           context: context,
-          message: "Name updated successfully!",
+          message: "Your nickname got changed!",
           type: SnackbarType.success,
         );
-        context.pop(); // Return to previous screen
+
+        // Wait a bit for the success message to show
+        await Future.delayed(const Duration(milliseconds: 500));
+
+        if (mounted) {
+          context.pop(); // Return to previous screen
+        }
       }
     } catch (e) {
       if (mounted) {
         showRetroSnackbar(
           context: context,
-          message: "Failed to update name: $e",
+          message: "Failed to update name: ${e.toString()}",
           type: SnackbarType.error,
         );
       }
@@ -74,6 +119,9 @@ class _EditNameScreenState extends State<EditNameScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Watch current user name for real-time updates
+    final currentUserNameAsync = ref.watch(currentUserNameStreamProvider);
+
     return Stack(
       children: [
         Scaffold(
@@ -135,6 +183,29 @@ class _EditNameScreenState extends State<EditNameScreen> {
                               textAlign: TextAlign.center,
                             ),
                           ),
+
+                          // Show current name if available
+                          currentUserNameAsync.when(
+                            data: (currentName) {
+                              if (currentName != null) {
+                                return Padding(
+                                  padding: const EdgeInsets.only(top: 8.0),
+                                  child: Text(
+                                    'Current: $currentName',
+                                    style: AppTextStyles.body.copyWith(
+                                      color: AppColors.textGrey,
+                                      fontSize: 14,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                );
+                              }
+                              return const SizedBox.shrink();
+                            },
+                            loading: () => const SizedBox.shrink(),
+                            error: (err, stack) => const SizedBox.shrink(),
+                          ),
+
                           const SizedBox(height: 20),
 
                           // Name input section
@@ -143,7 +214,34 @@ class _EditNameScreenState extends State<EditNameScreen> {
                             child: RetroTextField(
                               controller: nameController,
                               hintText: 'Enter a nickname...',
+                              maxLength: 30, // Now this will work!
+                              keyboardType: TextInputType.text,
+                              onChanged: (value) {
+                                // Optional: Add real-time validation or formatting here
+                              },
                             ),
+                          ),
+
+                          const SizedBox(height: 20),
+
+                          // Character count indicator
+                          ValueListenableBuilder<TextEditingValue>(
+                            valueListenable: nameController,
+                            builder: (context, value, child) {
+                              final currentLength = value.text.length;
+                              final remainingChars = 30 - currentLength;
+
+                              return Text(
+                                '$currentLength/30 characters',
+                                style: AppTextStyles.body.copyWith(
+                                  color:
+                                      remainingChars < 5
+                                          ? AppColors.errorRed
+                                          : AppColors.textGrey,
+                                  fontSize: 12,
+                                ),
+                              );
+                            },
                           ),
 
                           const Expanded(child: SizedBox()),

@@ -1,130 +1,220 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/foundation.dart';
 import 'package:chat_drop/features/friends/domain/models/friend.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
-class FriendsRemoteDatasource {
+class FriendsRemoteDataSource {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  String get _currentUserId => _auth.currentUser?.uid ?? '';
+  Future<void> addFriend(String userId, Friend friend) async {
+    await _firestore
+        .collection('users')
+        .doc(userId)
+        .collection('friends')
+        .doc(friend.id)
+        .set(friend.toMap());
 
-  CollectionReference get _friendsCollection =>
-      _firestore.collection('users').doc(_currentUserId).collection('friends');
+    // Also add the reverse relationship
+    final currentUser = await _firestore.collection('users').doc(userId).get();
+    final currentUserName = currentUser.data()?['name'] ?? 'Unknown';
 
-  Stream<List<Friend>> getFriendsStream() {
-    if (_currentUserId.isEmpty) {
-      if (kDebugMode) print('⚠️ No authenticated user, returning empty stream');
-      return Stream.value([]);
-    }
+    final reverseFriend = Friend(
+      id: userId,
+      name: currentUserName,
+      avatar: '😊', // Use avatar 
+      status: FriendStatus.temporary,
+      sessionId: friend.sessionId,
+      createdAt: DateTime.now(),
+    );
 
-    if (kDebugMode)
-      print('📡 Starting friends stream for user: $_currentUserId');
+    await _firestore
+        .collection('users')
+        .doc(friend.id)
+        .collection('friends')
+        .doc(userId)
+        .set(reverseFriend.toMap());
+  }
 
-    return _friendsCollection
-        .orderBy('lastMessageTime', descending: true)
+  Future<void> updateFriendStatus(
+    String userId,
+    String friendId,
+    FriendStatus status, {
+    String? requestedBy,
+  }) async {
+    final updateData = {'status': status.name, 'requestedBy': requestedBy};
+
+    // Update both directions
+    await _firestore
+        .collection('users')
+        .doc(userId)
+        .collection('friends')
+        .doc(friendId)
+        .update(updateData);
+
+    await _firestore
+        .collection('users')
+        .doc(friendId)
+        .collection('friends')
+        .doc(userId)
+        .update(updateData);
+  }
+
+  Stream<String> getUserNameStream(String userId) {
+    return _firestore
+        .collection('users')
+        .doc(userId)
         .snapshots()
-        .map((snapshot) {
-          if (kDebugMode)
-            print('📦 Received ${snapshot.docs.length} friends from Firestore');
-          return snapshot.docs
-              .map((doc) {
-                try {
-                  return Friend.fromFirestore(
-                    doc.data() as Map<String, dynamic>,
-                    doc.id,
-                  );
-                } catch (e) {
-                  if (kDebugMode)
-                    print('❌ Error parsing friend document ${doc.id}: $e');
-                  return null;
-                }
-              })
-              .whereType<Friend>()
-              .toList();
-        })
-        .handleError((error) {
-          if (kDebugMode) print('❌ Error in getFriendsStream: $error');
-          return <Friend>[];
+        .map((doc) => doc.data()?['name'] ?? 'Unknown User');
+  }
+
+  Stream<List<Friend>> getFriendsStream(String userId) {
+    return _firestore
+        .collection('users')
+        .doc(userId)
+        .collection('friends')
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .asyncMap((snapshot) async {
+          final friends = <Friend>[];
+
+          for (final doc in snapshot.docs) {
+            try {
+              final friendData = doc.data();
+
+              // Get the latest name from the user's profile
+              final userDoc =
+                  await _firestore
+                      .collection('users')
+                      .doc(friendData['id'])
+                      .get();
+
+              final latestName =
+                  userDoc.data()?['name'] ?? friendData['name'] ?? 'Unknown';
+
+              // Update the name in friendData
+              friendData['name'] = latestName;
+
+              friends.add(Friend.fromMap(friendData));
+            } catch (e) {
+              print('Error parsing friend data: $e');
+              // Return a fallback friend object
+              friends.add(
+                Friend(
+                  id: doc.id,
+                  name: doc.data()['name'] ?? 'Unknown',
+                  avatar: doc.data()['avatar'] ?? '😊',
+                  status: FriendStatus.temporary,
+                  createdAt: DateTime.now(),
+                ),
+              );
+            }
+          }
+
+          return friends;
         });
   }
 
-  // Removed sample friends initialization - no longer needed
-  // The app will naturally show "No friends" state when collection is empty
-
-  Future<void> addFriend(Friend friend) async {
-    if (_currentUserId.isEmpty) {
-      throw Exception('No authenticated user');
-    }
+  Future<Friend?> getFriend(String userId, String friendId) async {
     try {
-      await _friendsCollection.doc(friend.id).set(friend.toFirestore());
-      if (kDebugMode) print('✅ Friend added: ${friend.name}');
-    } catch (e) {
-      if (kDebugMode) print('❌ Error adding friend: $e');
-      rethrow;
-    }
-  }
+      final doc =
+          await _firestore
+              .collection('users')
+              .doc(userId)
+              .collection('friends')
+              .doc(friendId)
+              .get();
 
-  Future<void> markAsRead(String friendId) async {
-    if (_currentUserId.isEmpty) return;
-    try {
-      await _friendsCollection.doc(friendId).update({
-        'isRead': true,
-        'unreadCount': 0,
-      });
+      if (!doc.exists) return null;
+      return Friend.fromMap(doc.data()!);
     } catch (e) {
-      if (kDebugMode) print('❌ Error marking as read: $e');
-    }
-  }
-
-  Future<void> updateFriend(String friendId, Friend friend) async {
-    if (_currentUserId.isEmpty) return;
-    try {
-      await _friendsCollection.doc(friendId).update(friend.toFirestore());
-      if (kDebugMode) print('✅ Friend updated: ${friend.name}');
-    } catch (e) {
-      if (kDebugMode) print('❌ Error updating friend: $e');
-      rethrow;
-    }
-  }
-
-  Future<void> removeFriend(String friendId) async {
-    if (_currentUserId.isEmpty) return;
-    try {
-      await _friendsCollection.doc(friendId).delete();
-      if (kDebugMode) print('✅ Friend removed: $friendId');
-    } catch (e) {
-      if (kDebugMode) print('❌ Error removing friend: $e');
-      rethrow;
+      print('Error getting friend: $e');
+      return null;
     }
   }
 
   Future<void> updateLastMessage(
+    String userId,
     String friendId,
     String message,
     DateTime timestamp,
   ) async {
-    if (_currentUserId.isEmpty) return;
+    final updateData = {
+      'lastMessage': message,
+      'lastMessageTime': timestamp.toIso8601String(),
+      'isRead': false, // Mark as unread when new message arrives
+      'unreadCount': FieldValue.increment(1),
+    };
+
     try {
-      await _friendsCollection.doc(friendId).update({
-        'lastMessage': message,
-        'lastMessageTime': timestamp.millisecondsSinceEpoch,
-        'isRead': false,
-        'unreadCount': FieldValue.increment(1),
-      });
-      if (kDebugMode) print('✅ Last message updated for friend: $friendId');
+      await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('friends')
+          .doc(friendId)
+          .update(updateData);
     } catch (e) {
-      if (kDebugMode) print('❌ Error updating last message: $e');
+      print('Error updating last message: $e');
     }
   }
 
-  Future<void> updateOnlineStatus(String friendId, bool isOnline) async {
-    if (_currentUserId.isEmpty) return;
+  Future<void> markAsRead(String userId, String friendId) async {
+    final updateData = {'isRead': true, 'unreadCount': 0};
+
     try {
-      await _friendsCollection.doc(friendId).update({'isOnline': isOnline});
-      if (kDebugMode) print('✅ Online status updated for friend: $friendId to $isOnline');
+      await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('friends')
+          .doc(friendId)
+          .update(updateData);
     } catch (e) {
-      if (kDebugMode) print('❌ Error updating online status: $e');
+      print('Error marking as read: $e');
+    }
+  }
+
+  Future<void> removeFriend(String userId, String friendId) async {
+    try {
+      // Remove both directions
+      await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('friends')
+          .doc(friendId)
+          .delete();
+
+      await _firestore
+          .collection('users')
+          .doc(friendId)
+          .collection('friends')
+          .doc(userId)
+          .delete();
+    } catch (e) {
+      print('Error removing friend: $e');
+    }
+  }
+
+  // Add this method to your FriendsRemoteDataSource:
+
+  Future<void> updateFriendName(
+    String userId,
+    String friendId,
+    String newName,
+  ) async {
+    try {
+      // Update in current user's friends collection
+      await _firestore
+          .collection('users')
+          .doc(userId)
+          .collection('friends')
+          .doc(friendId)
+          .update({'name': newName});
+
+      // Also update the friend's own user document
+      await _firestore.collection('users').doc(friendId).update({
+        'name': newName,
+      });
+
+      print('Updated friend name to: $newName');
+    } catch (e) {
+      print('Error updating friend name: $e');
     }
   }
 }

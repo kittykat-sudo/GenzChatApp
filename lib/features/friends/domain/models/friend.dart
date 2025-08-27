@@ -1,70 +1,101 @@
+enum FriendStatus { temporary, pending, permanent }
+
 class Friend {
   final String id;
   final String name;
-  final String avatar;
+  final String? avatar;
+  final FriendStatus status;
+  final String? sessionId;
+  final DateTime createdAt;
+  final String? requestedBy;
+  final DateTime? lastMessageTime;
+  final String? lastMessage;
   final bool isOnline;
-  final String lastMessage;
-  final DateTime lastMessageTime;
-  final int unreadCount;
   final bool isRead;
+  final int unreadCount;
 
-  const Friend({
+  Friend({
     required this.id,
     required this.name,
-    required this.avatar,
-    required this.isOnline,
-    required this.lastMessage,
-    required this.lastMessageTime,
-    this.unreadCount = 0,
+    this.avatar,
+    required this.status,
+    this.sessionId,
+    required this.createdAt,
+    this.requestedBy,
+    this.lastMessageTime,
+    this.lastMessage,
+    this.isOnline = false,
     this.isRead = true,
+    this.unreadCount = 0,
   });
-
-  factory Friend.fromFirestore(Map<String, dynamic> data, String id) {
-    return Friend(
-      id: id,
-      name: data['name'] ?? '',
-      avatar: data['avatar'] ?? '👤',
-      isOnline: data['isOnline'] ?? false,
-      lastMessage: data['lastMessage'] ?? '',
-      lastMessageTime: DateTime.fromMillisecondsSinceEpoch(
-        data['lastMessageTime'] ?? 0,
-      ),
-      unreadCount: data['unreadCount'] ?? 0,
-      isRead: data['isRead'] ?? true,
-    );
-  }
-
-  Map<String, dynamic> toFirestore() {
-    return {
-      'name': name,
-      'avatar': avatar,
-      'isOnline': isOnline,
-      'lastMessage': lastMessage,
-      'lastMessageTime': lastMessageTime.millisecondsSinceEpoch,
-      'unreadCount': unreadCount,
-      'isRead': isRead,
-    };
-  }
 
   Friend copyWith({
     String? id,
     String? name,
     String? avatar,
-    bool? isOnline,
-    String? lastMessage,
+    FriendStatus? status,
+    String? sessionId,
+    DateTime? createdAt,
+    String? requestedBy,
     DateTime? lastMessageTime,
-    int? unreadCount,
+    String? lastMessage,
+    bool? isOnline,
     bool? isRead,
+    int? unreadCount,
   }) {
     return Friend(
       id: id ?? this.id,
       name: name ?? this.name,
       avatar: avatar ?? this.avatar,
-      isOnline: isOnline ?? this.isOnline,
-      lastMessage: lastMessage ?? this.lastMessage,
+      status: status ?? this.status,
+      sessionId: sessionId ?? this.sessionId,
+      createdAt: createdAt ?? this.createdAt,
+      requestedBy: requestedBy ?? this.requestedBy,
       lastMessageTime: lastMessageTime ?? this.lastMessageTime,
-      unreadCount: unreadCount ?? this.unreadCount,
+      lastMessage: lastMessage ?? this.lastMessage,
+      isOnline: isOnline ?? this.isOnline,
       isRead: isRead ?? this.isRead,
+      unreadCount: unreadCount ?? this.unreadCount,
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'name': name,
+      'avatar': avatar,
+      'status': status.name,
+      'sessionId': sessionId,
+      'createdAt': createdAt.toIso8601String(),
+      'requestedBy': requestedBy,
+      'lastMessageTime': lastMessageTime?.toIso8601String(),
+      'lastMessage': lastMessage,
+      'isOnline': isOnline,
+      'isRead': isRead,
+      'unreadCount': unreadCount,
+    };
+  }
+
+  factory Friend.fromMap(Map<String, dynamic> map) {
+    return Friend(
+      id: map['id'] ?? '',
+      name: map['name'] ?? '',
+      avatar: map['avatar'],
+      status: FriendStatus.values.firstWhere(
+        (e) => e.name == map['status'],
+        orElse: () => FriendStatus.temporary,
+      ),
+      sessionId: map['sessionId'],
+      createdAt: DateTime.parse(map['createdAt']),
+      requestedBy: map['requestedBy'],
+      lastMessageTime:
+          map['lastMessageTime'] != null
+              ? DateTime.parse(map['lastMessageTime'])
+              : null,
+      lastMessage: map['lastMessage'],
+      isOnline: map['isOnline'] ?? false,
+      isRead: map['isRead'] ?? true,
+      unreadCount: map['unreadCount'] ?? 0,
     );
   }
 }

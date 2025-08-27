@@ -49,7 +49,7 @@ class ChatRepositoryImpl implements ChatRepository {
       await _remoteDataSource.sendMessage(message);
       await _databaseHelper.updateMessageStatus(message.id, isSent: true);
     } catch (e) {
-      // Handle error - message remains as not sent
+      // Message remains as not sent
       print('Failed to send message: $e');
     }
   }
@@ -76,7 +76,6 @@ class ChatRepositoryImpl implements ChatRepository {
 
   @override
   Stream<List<Message>> getMessages(String sessionId) {
-    // Combine local and remote streams
     return _databaseHelper
         .getMessages(sessionId)
         .map((messages) => messages.cast<Message>());
@@ -87,15 +86,65 @@ class ChatRepositoryImpl implements ChatRepository {
     final session = await _remoteDataSource.getSessionOnce(sessionId);
     if (session == null) return 'Unknown';
 
-    // Find the other user
     final otherUserId = session.users.firstWhere(
       (userId) => userId != currentUserId,
       orElse: () => '',
     );
 
     if (otherUserId.isEmpty) return 'Unknown';
-
-    // Get name from session userNames mapping
     return session.userNames?[otherUserId] ?? 'Friend';
+  }
+
+  // Simplified message status methods
+  @override
+  Future<void> markMessageAsRead(String messageId) async {
+    try {
+      await _remoteDataSource.markMessageAsRead(messageId);
+      await _databaseHelper.updateMessageStatus(messageId, isRead: true);
+    } catch (e) {
+      print('Failed to mark message as read: $e');
+    }
+  }
+
+  @override
+  Future<void> markAllMessagesAsRead(
+    String sessionId,
+    String currentUserId,
+  ) async {
+    try {
+      await _remoteDataSource.markAllMessagesAsRead(sessionId, currentUserId);
+      await _databaseHelper.markAllMessagesAsRead(sessionId, currentUserId);
+    } catch (e) {
+      print('Failed to mark all messages as read: $e');
+    }
+  }
+
+  @override
+  Future<void> markMessageAsDelivered(String messageId) async {
+    try {
+      await _remoteDataSource.markMessageAsDelivered(messageId);
+      await _databaseHelper.updateMessageStatus(messageId, isSent: true);
+    } catch (e) {
+      print('Failed to mark message as delivered: $e');
+    }
+  }
+
+  @override
+  Future<void> updateMessageReadStatus(String messageId, bool isRead) async {
+    try {
+      await _remoteDataSource.updateMessageReadStatus(messageId, isRead);
+      await _databaseHelper.updateMessageStatus(messageId, isRead: isRead);
+    } catch (e) {
+      print('Failed to update message read status: $e');
+    }
+  }
+
+  @override
+  Future<void> updateMessageSentStatus(String messageId, bool isSent) async {
+    try {
+      await _databaseHelper.updateMessageStatus(messageId, isSent: isSent);
+    } catch (e) {
+      print('Failed to update message sent status: $e');
+    }
   }
 }

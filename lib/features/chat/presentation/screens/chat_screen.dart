@@ -22,10 +22,32 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   final ScrollController _scrollController = ScrollController();
 
   @override
+  void initState() {
+    super.initState();
+    // Mark messages as read when screen opens
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final sessionId = ref.read(sessionIdProvider);
+      if (sessionId != null) {
+        // Mark all messages as read when opening chat
+        _markMessagesAsRead(sessionId);
+      }
+    });
+  }
+
+  @override
   void dispose() {
     _messageController.dispose();
     _scrollController.dispose();
     super.dispose();
+  }
+
+  void _markMessagesAsRead(String sessionId) {
+    try {
+      final chatActions = ref.read(chatActionsProvider);
+      chatActions.markAllMessagesAsRead(sessionId);
+    } catch (e) {
+      print('Failed to mark messages as read: $e');
+    }
   }
 
   void _sendMessage() {
@@ -57,18 +79,30 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         sessionId != null ? ref.watch(sessionProvider(sessionId)) : null;
     final messagesAsync =
         sessionId != null ? ref.watch(messagesProvider(sessionId)) : null;
-    final friendNameAsync =
-        sessionId != null ? ref.watch(friendNameProvider(sessionId)) : null;
+    final friendNameAsync = ref.watch(currentChatFriendNameProvider);
     final currentUserId = FirebaseAuth.instance.currentUser?.uid;
+    final currentFriendId = ref.watch(currentChatFriendIdProvider);
 
-    // Get friend name
-    final friendName =
-        friendNameAsync?.when(
-          data: (name) => name,
-          loading: () => 'Friend',
-          error: (err, stack) => 'Friend',
-        ) ??
-        'Friend';
+    // Debug prints
+    print("Session ID: $sessionId");
+    print("Current Friend ID: $currentFriendId");
+
+    // Get friend name from provider
+    String friendName = 'Friend';
+    friendNameAsync.when(
+      data: (name) {
+        friendName = name;
+        print("Friend Name from provider: $name");
+      },
+      loading: () {
+        friendName = 'Loading...';
+        print("Friend Name: Loading...");
+      },
+      error: (err, stack) {
+        print('Error loading friend name: $err');
+        friendName = 'Unknown';
+      },
+    );
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -145,8 +179,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                             const SizedBox(height: 16),
                             ElevatedButton(
                               onPressed: () {
-                                // Refresh messages
-                                ref.invalidate(messagesProvider(sessionId!));
+                                if (sessionId != null) {
+                                  ref.invalidate(messagesProvider(sessionId));
+                                }
                               },
                               child: const Text('Retry'),
                             ),
@@ -181,6 +216,17 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                         ),
                       );
                     }
+
+                    // Auto scroll to bottom when new messages arrive
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      if (_scrollController.hasClients) {
+                        _scrollController.animateTo(
+                          _scrollController.position.maxScrollExtent,
+                          duration: const Duration(milliseconds: 300),
+                          curve: Curves.easeOut,
+                        );
+                      }
+                    });
 
                     return ListView.builder(
                       controller: _scrollController,

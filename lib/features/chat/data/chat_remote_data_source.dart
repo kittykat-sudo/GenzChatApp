@@ -132,4 +132,79 @@ class ChatRemoteDataSource {
     final doc = await _firestore.collection('sessions').doc(sessionId).get();
     return doc.exists;
   }
+
+  // Add these methods to your ChatRemoteDataSource:
+
+  Future<void> markMessageAsRead(String messageId) async {
+    final sessionsQuery = await _firestore.collection('sessions').get();
+
+    for (final sessionDoc in sessionsQuery.docs) {
+      try {
+        await sessionDoc.reference.collection('messages').doc(messageId).update(
+          {'isRead': true, 'readAt': FieldValue.serverTimestamp()},
+        );
+        break;
+      } catch (e) {
+        continue;
+      }
+    }
+  }
+
+  Future<void> markAllMessagesAsRead(
+    String sessionId,
+    String currentUserId,
+  ) async {
+    final messagesQuery =
+        await _firestore
+            .collection('sessions')
+            .doc(sessionId)
+            .collection('messages')
+            .where('senderId', isNotEqualTo: currentUserId)
+            .where('isRead', isEqualTo: false)
+            .get();
+
+    final batch = _firestore.batch();
+
+    for (final doc in messagesQuery.docs) {
+      batch.update(doc.reference, {
+        'isRead': true,
+        'readAt': FieldValue.serverTimestamp(),
+      });
+    }
+
+    await batch.commit();
+  }
+
+  Future<void> markMessageAsDelivered(String messageId) async {
+    final sessionsQuery = await _firestore.collection('sessions').get();
+
+    for (final sessionDoc in sessionsQuery.docs) {
+      try {
+        await sessionDoc.reference.collection('messages').doc(messageId).update(
+          {'isSent': true, 'deliveredAt': FieldValue.serverTimestamp()},
+        );
+        break;
+      } catch (e) {
+        continue;
+      }
+    }
+  }
+
+  Future<void> updateMessageReadStatus(String messageId, bool isRead) async {
+    final sessionsQuery = await _firestore.collection('sessions').get();
+
+    for (final sessionDoc in sessionsQuery.docs) {
+      try {
+        await sessionDoc.reference.collection('messages').doc(messageId).update(
+          {
+            'isRead': isRead,
+            if (isRead) 'readAt': FieldValue.serverTimestamp(),
+          },
+        );
+        break;
+      } catch (e) {
+        continue;
+      }
+    }
+  }
 }
