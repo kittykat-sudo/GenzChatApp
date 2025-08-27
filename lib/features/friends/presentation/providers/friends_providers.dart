@@ -1,3 +1,4 @@
+import 'package:chat_drop/features/chat/presentation/providers/chat_providers.dart';
 import 'package:chat_drop/features/friends/data/friends_remote_datasource.dart';
 import 'package:chat_drop/features/friends/data/friends_repository_impl.dart';
 import 'package:chat_drop/features/friends/domain/friends_repository.dart';
@@ -15,14 +16,75 @@ final friendsProvider = StreamProvider<List<Friend>>((ref) {
   return repository.getFriends();
 });
 
+final friendNameCacheProvider = StateProvider<Map<String, String>>((ref) => {});
+
 // Alternative name that matches widget
 final friendsStreamProvider = StreamProvider<List<Friend>>((ref) {
   final repository = ref.read(friendsRepositoryProvider);
   return repository.getFriends();
 });
 
+// Move this provider to the top level (outside of FriendActions class)
+final friendsWithMessagesProvider = StreamProvider<List<Friend>>((ref) async* {
+  final friendsStream = ref.watch(friendsStreamProvider.stream);
+
+  await for (final friends in friendsStream) {
+    final friendsWithMessages = <Friend>[];
+
+    for (final friend in friends) {
+      if (friend.sessionId != null) {
+        try {
+          // Get the last message for this friend's session
+          final chatRepository = ref.read(chatRepositoryProvider);
+          final messagesStream = chatRepository.getMessages(friend.sessionId!);
+
+          // Get the latest messages (just take the first emission)
+          final messages = await messagesStream.first;
+
+          String lastMessage = 'No messages yet';
+          if (messages.isNotEmpty) {
+            // Get the most recent message
+            final sortedMessages =
+                messages.toList()
+                  ..sort((a, b) => b.timestamp.compareTo(a.timestamp));
+            lastMessage = sortedMessages.first.content;
+          }
+
+          // Create a new friend object with the last message
+          friendsWithMessages.add(
+            Friend(
+              id: friend.id,
+              name: friend.name,
+              avatar: friend.avatar,
+              status: friend.status,
+              sessionId: friend.sessionId,
+              createdAt: friend.createdAt,
+              isOnline: friend.isOnline,
+              isRead: friend.isRead,
+              unreadCount: friend.unreadCount,
+              lastMessage: lastMessage,
+              lastMessageTime:
+                  messages.isNotEmpty
+                      ? messages.last.timestamp
+                      : friend.lastMessageTime,
+            ),
+          );
+        } catch (e) {
+          print('Error getting last message for friend ${friend.name}: $e');
+          // If there's an error, just add the friend without updating the message
+          friendsWithMessages.add(friend);
+        }
+      } else {
+        // If no session ID, just add the friend as-is
+        friendsWithMessages.add(friend);
+      }
+    }
+
+    yield friendsWithMessages;
+  }
+});
+
 // Individual friend provider
-// Make this a StreamProvider that extracts a specific friend from the friends stream
 final friendProvider = StreamProvider.family<Friend?, String>((ref, friendId) {
   final friendsAsync = ref.watch(friendsStreamProvider);
 

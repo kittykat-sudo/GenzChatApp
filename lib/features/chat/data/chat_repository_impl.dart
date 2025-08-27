@@ -76,9 +76,16 @@ class ChatRepositoryImpl implements ChatRepository {
 
   @override
   Stream<List<Message>> getMessages(String sessionId) {
-    return _databaseHelper
-        .getMessages(sessionId)
-        .map((messages) => messages.cast<Message>());
+    // This should listen to BOTH local and remote changes
+    return _remoteDataSource.getMessages(sessionId).asyncMap((
+      remoteMessages,
+    ) async {
+      // Update local cache with remote messages
+      for (final message in remoteMessages) {
+        await _databaseHelper.cacheMessage(message, sessionId);
+      }
+      return remoteMessages;
+    });
   }
 
   @override
@@ -145,6 +152,17 @@ class ChatRepositoryImpl implements ChatRepository {
       await _databaseHelper.updateMessageStatus(messageId, isSent: isSent);
     } catch (e) {
       print('Failed to update message sent status: $e');
+    }
+  }
+
+  @override
+  Future<List<Message>> getLastMessage(String sessionId) async {
+    try {
+      return await _remoteDataSource.getLastMessage(sessionId);
+    } catch (e) {
+      // Fallback to local database
+      final localMessages = await _databaseHelper.getLastMessage(sessionId);
+      return localMessages.cast<Message>();
     }
   }
 }

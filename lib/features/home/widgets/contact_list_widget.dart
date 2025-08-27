@@ -14,7 +14,7 @@ class ContactListWidget extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final friendsAsync = ref.watch(friendsStreamProvider);
+    final friendsAsync = ref.watch(friendsWithMessagesProvider);
 
     return Expanded(
       child: Column(
@@ -76,6 +76,12 @@ class ContactListWidget extends ConsumerWidget {
     // Use microtask to avoid blocking UI
     Future.microtask(() {
       try {
+        // Cache the friend name immediately
+        final nameCache = ref.read(friendNameCacheProvider.notifier);
+        nameCache.update((cache) => {...cache, friend.id: friend.name});
+
+        print("Cached friend name: ${friend.name} for ID: ${friend.id}");
+
         // Mark friend as read
         ref.read(friendActionsProvider).markAsRead(friend.id);
 
@@ -89,7 +95,6 @@ class ContactListWidget extends ConsumerWidget {
 
         print("Setting session ID: ${friend.sessionId}");
         print("Setting friend ID: ${friend.id}");
-        print("Friend name: ${friend.name}");
       } catch (e) {
         if (kDebugMode) print('Error handling friend tap: $e');
       }

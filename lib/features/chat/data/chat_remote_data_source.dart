@@ -95,7 +95,7 @@ class ChatRemoteDataSource {
         .collection('sessions')
         .doc(sessionId)
         .collection('messages')
-        .orderBy('timestamp')
+        .orderBy('timestamp', descending: false)
         .snapshots()
         .map((snapshot) {
           return snapshot.docs
@@ -206,5 +206,20 @@ class ChatRemoteDataSource {
         continue;
       }
     }
+  }
+
+  Future<List<MessageModel>> getLastMessage(String sessionId) async {
+    final querySnapshot =
+        await _firestore
+            .collection('sessions')
+            .doc(sessionId)
+            .collection('messages')
+            .orderBy('timestamp', descending: true)
+            .limit(1)
+            .get();
+
+    return querySnapshot.docs.map((doc) {
+      return MessageModel.fromFirestore(doc);
+    }).toList();
   }
 }

@@ -35,7 +35,7 @@ class _EditNameScreenState extends ConsumerState<EditNameScreen> {
       final currentUserNameAsync = ref.read(currentUserNameProvider);
       final currentName = currentUserNameAsync;
       if (mounted) {
-        nameController.text = currentName as String; 
+        nameController.text = currentName as String;
       }
     } catch (e) {
       print('Error loading current user name: $e');
@@ -214,7 +214,7 @@ class _EditNameScreenState extends ConsumerState<EditNameScreen> {
                             child: RetroTextField(
                               controller: nameController,
                               hintText: 'Enter a nickname...',
-                              maxLength: 30, // Now this will work!
+                              maxLength: 30,
                               keyboardType: TextInputType.text,
                               onChanged: (value) {
                                 // Optional: Add real-time validation or formatting here
@@ -274,6 +274,22 @@ class _EditNameScreenState extends ConsumerState<EditNameScreen> {
               ),
             ),
           ),
+
+        // Home button positioned exactly like in QR scanner
+        Positioned(
+          top: 75,
+          left: 40,
+          child: RetroButton(
+            text: '',
+            icon: Icons.home_outlined,
+            onPressed: () {
+              context.go('/');
+            },
+            backgroundColor: AppColors.accentPink,
+            width: 48,
+            height: 48,
+          ),
+        ),
       ],
     );
   }

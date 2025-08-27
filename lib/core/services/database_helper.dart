@@ -49,6 +49,11 @@ class DatabaseHelper {
     _emitMessages(sessionId);
   }
 
+  //new
+  Future<void> cacheMessage(MessageModel message, String sessionId) async {
+    await insertMessage(message, sessionId);
+  }
+
   Future<void> updateMessageStatus(
     String messageId, {
     bool? isSent,
@@ -130,5 +135,20 @@ class DatabaseHelper {
     );
 
     _emitMessages(sessionId);
+  }
+
+  Future<List<MessageModel>> getLastMessage(String sessionId) async {
+    final db = await instance.database;
+    final List<Map<String, dynamic>> maps = await db.query(
+      'messages',
+      where: 'sessionId = ?',
+      whereArgs: [sessionId],
+      orderBy: 'timestamp DESC',
+      limit: 1,
+    );
+
+    return List.generate(maps.length, (i) {
+      return MessageModel.fromDb(maps[i]);
+    });
   }
 }

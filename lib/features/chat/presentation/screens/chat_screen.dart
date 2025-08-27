@@ -79,7 +79,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         sessionId != null ? ref.watch(sessionProvider(sessionId)) : null;
     final messagesAsync =
         sessionId != null ? ref.watch(messagesProvider(sessionId)) : null;
-    final friendNameAsync = ref.watch(currentChatFriendNameProvider);
+    // final friendNameAsync = ref.watch(currentChatFriendNameProvider);
     final currentUserId = FirebaseAuth.instance.currentUser?.uid;
     final currentFriendId = ref.watch(currentChatFriendIdProvider);
 
@@ -87,22 +87,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     print("Session ID: $sessionId");
     print("Current Friend ID: $currentFriendId");
 
-    // Get friend name from provider
-    String friendName = 'Friend';
-    friendNameAsync.when(
-      data: (name) {
-        friendName = name;
-        print("Friend Name from provider: $name");
-      },
-      loading: () {
-        friendName = 'Loading...';
-        print("Friend Name: Loading...");
-      },
-      error: (err, stack) {
-        print('Error loading friend name: $err');
-        friendName = 'Unknown';
-      },
-    );
+    // Get friend name directly from cache - no loading state!
+    final friendName = ref.watch(currentChatFriendNameProvider);
+    print("Friend Name from cache: $friendName");
 
     return Scaffold(
       backgroundColor: AppColors.background,

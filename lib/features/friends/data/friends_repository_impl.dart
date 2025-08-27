@@ -130,6 +130,7 @@ class FriendsRepositoryImpl implements FriendsRepository {
 
   // Add this method to your FriendsRepositoryImpl:
 
+  @override
   Future<void> updateFriendName(String friendId, String newName) async {
     final currentUserId = FirebaseAuth.instance.currentUser?.uid;
     if (currentUserId == null) throw Exception('User not authenticated');

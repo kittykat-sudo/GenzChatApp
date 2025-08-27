@@ -4,6 +4,7 @@ import 'package:chat_drop/features/chat/data/chat_repository_impl.dart';
 import 'package:chat_drop/features/chat/domain/chat_repository.dart';
 import 'package:chat_drop/features/chat/domain/chat_session.dart';
 import 'package:chat_drop/features/chat/domain/message.dart';
+import 'package:chat_drop/features/friends/domain/models/friend.dart';
 import 'package:chat_drop/features/friends/presentation/providers/friends_providers.dart';
 import 'package:chat_drop/features/auth/presentation/providers/auth_providers.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -33,51 +34,24 @@ final messagesProvider = StreamProvider.family<List<Message>, String>((
 });
 
 // Friend name provider that watches friends changes
-final currentChatFriendNameProvider = StreamProvider<String>((ref) async* {
+final currentChatFriendNameProvider = Provider<String>((ref) {
   final friendId = ref.watch(currentChatFriendIdProvider);
+  if (friendId == null) return 'Friend';
 
-  print("currentChatFriendNameProvider called with friendId: $friendId");
+  // First check cache from friends providers
+  final cache = ref.watch(friendNameCacheProvider);
+  final cachedName = cache[friendId];
 
-  if (friendId == null) {
-    print("No friend ID available");
-    yield 'Unknown';
-    return;
+  print("Checking cache for friend ID: $friendId");
+  print("Cache contents: $cache");
+  print("Cached name found: $cachedName");
+
+  if (cachedName != null) {
+    return cachedName;
   }
 
-  print("Watching friend name for ID: $friendId");
-
-  // Watch the friends stream and extract the specific friend's name
-  final friendsAsync = ref.watch(friendsStreamProvider);
-
-  yield* friendsAsync.when(
-    data: (friends) async* {
-      print("Friends data received, count: ${friends.length}");
-      print("Looking for friend with ID: $friendId");
-
-      try {
-        final friend = friends.firstWhere((f) {
-          print("Checking friend: ${f.id} == $friendId ? ${f.id == friendId}");
-          return f.id == friendId;
-        });
-
-        final friendName = friend.name;
-        print("Found friend name: $friendName");
-        yield friendName;
-      } catch (e) {
-        print("Friend not found in friends list: $e");
-        print("Available friend IDs: ${friends.map((f) => f.id).toList()}");
-        yield 'Unknown';
-      }
-    },
-    loading: () async* {
-      print("Friends data loading...");
-      yield 'Loading...';
-    },
-    error: (error, stack) async* {
-      print('Error in friends stream: $error');
-      yield 'Unknown';
-    },
-  );
+  // Fallback to 'Friend' if not in cache
+  return 'Friend';
 });
 
 // Alternative provider that gets friend name directly
@@ -226,4 +200,42 @@ class ChatActions {
       rethrow;
     }
   }
+
+  final friendsWithMessagesProvider = StreamProvider<List<Friend>>((
+    ref,
+  ) async* {
+    final currentUserId = ref.watch(currentUserIdProvider);
+    if (currentUserId == null) {
+      yield [];
+      return;
+    }
+
+    await for (final baseFriends in ref.watch(friendsStreamProvider.stream)) {
+      final friendsWithMessages = <Friend>[];
+
+      for (final friend in baseFriends) {
+        if (friend.sessionId != null) {
+          // Get last message for this friend's session
+          try {
+            final messages =
+                await ref
+                    .read(chatRepositoryProvider)
+                    .getMessages(friend.sessionId!)
+                    .first;
+
+            final lastMessage =
+                messages.isNotEmpty ? messages.last.content : 'No messages yet';
+
+            friendsWithMessages.add(friend.copyWith(lastMessage: lastMessage));
+          } catch (e) {
+            friendsWithMessages.add(friend);
+          }
+        } else {
+          friendsWithMessages.add(friend);
+        }
+      }
+
+      yield friendsWithMessages;
+    }
+  });
 }

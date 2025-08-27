@@ -37,4 +37,5 @@ abstract class FriendsRepository {
   Future<void> markAsRead(String friendId);
 
   Future<void> updateFriendName(String friendId, String newName);
+  
 }
