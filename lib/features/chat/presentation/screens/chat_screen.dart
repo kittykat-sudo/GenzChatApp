@@ -46,8 +46,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     try {
       final chatActions = ref.read(chatActionsProvider);
       chatActions.markAllMessagesAsRead(sessionId);
+      print('Marked all messages as read for session: $sessionId');
     } catch (e) {
-      print('Failed to mark messages as read: $e');
+      print('Error marking messages as read: $e');
     }
   }
 

@@ -104,25 +104,29 @@ class ChatRepositoryImpl implements ChatRepository {
 
   // Simplified message status methods
   @override
-  Future<void> markMessageAsRead(String messageId) async {
-    try {
-      await _remoteDataSource.markMessageAsRead(messageId);
-      await _databaseHelper.updateMessageStatus(messageId, isRead: true);
-    } catch (e) {
-      print('Failed to mark message as read: $e');
-    }
-  }
-
-  @override
   Future<void> markAllMessagesAsRead(
     String sessionId,
     String currentUserId,
   ) async {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) return;
+
     try {
-      await _remoteDataSource.markAllMessagesAsRead(sessionId, currentUserId);
-      await _databaseHelper.markAllMessagesAsRead(sessionId, currentUserId);
+      await _remoteDataSource.markAllMessagesAsRead(sessionId, currentUser.uid);
+      // Also update local database
+      await _databaseHelper.markAllMessagesAsRead(sessionId, currentUser.uid);
     } catch (e) {
-      print('Failed to mark all messages as read: $e');
+      print('Failed to mark messages as read: $e');
+    }
+  }
+
+  @override
+  Future<void> markMessageAsRead(String messageId) async {
+    try {
+      await _remoteDataSource.markMessageAsRead(messageId);
+      await _databaseHelper.markMessageAsRead(messageId);
+    } catch (e) {
+      print('Failed to mark message as read: $e');
     }
   }
 

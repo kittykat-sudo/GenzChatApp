@@ -14,7 +14,8 @@ class ContactListWidget extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final friendsAsync = ref.watch(friendsWithMessagesProvider);
+    // Use the real-time provider instead
+    final friendsAsync = ref.watch(friendsWithLiveMessagesProvider);
 
     return Expanded(
       child: Column(
@@ -37,7 +38,13 @@ class ContactListWidget extends ConsumerWidget {
                   return const _EmptyFriendsState();
                 }
 
-                print("Friend names: ${friends.map((f) => f.name).toList()}");
+                // Debug print to see real-time updates
+                print('📱 Contact list updated: ${friends.length} friends');
+                for (final friend in friends) {
+                  print(
+                    '  ${friend.name}: ${friend.unreadCount} unread, "${friend.lastMessage}"',
+                  );
+                }
 
                 return ListView.builder(
                   physics: const BouncingScrollPhysics(),
@@ -46,14 +53,18 @@ class ContactListWidget extends ConsumerWidget {
                   itemBuilder: (context, index) {
                     final friend = friends[index];
                     return ContactCard(
-                      key: ValueKey(friend.id),
+                      key: ValueKey(
+                        '${friend.id}_${friend.unreadCount}_${friend.lastMessage}',
+                      ),
                       name: friend.name,
                       message: friend.lastMessage ?? 'No messages yet',
-                      avatar: friend.avatar ?? '😊', // Default avatar
-                      isOnline: friend.isOnline,
-                      isRead: friend.isRead,
+                      avatar: friend.avatar ?? '😊',
+                      isOnline: friend.isOnline, // Real online status
+                      isRead: friend.isRead, // Real read status
                       unreadCount:
-                          friend.unreadCount > 0 ? friend.unreadCount : null,
+                          friend.unreadCount > 0
+                              ? friend.unreadCount
+                              : null, // Real unread count
                       onTap: () => _handleFriendTap(ref, friend, context),
                     );
                   },
@@ -63,7 +74,8 @@ class ContactListWidget extends ConsumerWidget {
               error:
                   (error, stack) => _ErrorState(
                     error: error,
-                    onRetry: () => ref.invalidate(friendsStreamProvider),
+                    onRetry:
+                        () => ref.invalidate(friendsWithLiveMessagesProvider),
                   ),
             ),
           ),

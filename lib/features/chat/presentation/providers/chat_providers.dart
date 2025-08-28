@@ -155,6 +155,11 @@ class ChatActions {
       final currentUserId = _ref.read(currentUserIdProvider);
       if (currentUserId != null) {
         await repository.markAllMessagesAsRead(sessionId, currentUserId);
+
+        // Invalidate friends provider to update read status
+        _ref.invalidate(friendsWithLiveMessagesProvider);
+
+        print('Marked all messages as read and invalidated friends provider');
       }
     } catch (e) {
       print('Failed to mark all messages as read: $e');
@@ -165,6 +170,11 @@ class ChatActions {
     try {
       final repository = _ref.read(chatRepositoryProvider);
       await repository.sendMessage(sessionId, content);
+
+      // Invalidate friends provider to update last message
+      _ref.invalidate(friendsWithLiveMessagesProvider);
+
+      print('Message sent and friends provider invalidated');
     } catch (e) {
       print('Failed to send message: $e');
       rethrow;

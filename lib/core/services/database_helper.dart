@@ -122,19 +122,24 @@ class DatabaseHelper {
 
   // Add/update these methods in your DatabaseHelper:
 
-  Future<void> markAllMessagesAsRead(
-    String sessionId,
-    String currentUserId,
-  ) async {
+  Future<void> markAllMessagesAsRead(String sessionId, String userId) async {
     final db = await instance.database;
     await db.update(
       'messages',
       {'isRead': 1},
-      where: 'sessionId = ? AND senderId != ? AND isRead = 0',
-      whereArgs: [sessionId, currentUserId],
+      where: 'sessionId = ? AND senderId != ?',
+      whereArgs: [sessionId, userId],
     );
+  }
 
-    _emitMessages(sessionId);
+  Future<void> markMessageAsRead(String messageId) async {
+    final db = await instance.database;
+    await db.update(
+      'messages',
+      {'isRead': 1},
+      where: 'id = ?',
+      whereArgs: [messageId],
+    );
   }
 
   Future<List<MessageModel>> getLastMessage(String sessionId) async {

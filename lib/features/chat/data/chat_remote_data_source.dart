@@ -150,29 +150,42 @@ class ChatRemoteDataSource {
     }
   }
 
-  Future<void> markAllMessagesAsRead(
-    String sessionId,
-    String currentUserId,
-  ) async {
-    final messagesQuery =
-        await _firestore
-            .collection('sessions')
-            .doc(sessionId)
-            .collection('messages')
-            .where('senderId', isNotEqualTo: currentUserId)
-            .where('isRead', isEqualTo: false)
-            .get();
+  Future<void> markAllMessagesAsRead(String sessionId, String userId) async {
+    try {
+      // Get all messages in the session first (without complex query)
+      final messagesQuery =
+          await _firestore
+              .collection('sessions')
+              .doc(sessionId)
+              .collection('messages')
+              .get();
 
-    final batch = _firestore.batch();
+      final batch = _firestore.batch();
+      int updateCount = 0;
 
-    for (final doc in messagesQuery.docs) {
-      batch.update(doc.reference, {
-        'isRead': true,
-        'readAt': FieldValue.serverTimestamp(),
-      });
+      // Filter and update in memory to avoid complex Firestore query
+      for (final doc in messagesQuery.docs) {
+        final data = doc.data();
+        final senderId = data['senderId'] as String?;
+        final isRead = data['isRead'] as bool? ?? false;
+
+        // Only update messages from other users that are not read
+        if (senderId != null && senderId != userId && !isRead) {
+          batch.update(doc.reference, {'isRead': true});
+          updateCount++;
+        }
+      }
+
+      if (updateCount > 0) {
+        await batch.commit();
+        print('Marked $updateCount messages as read');
+      } else {
+        print('No messages to mark as read');
+      }
+    } catch (e) {
+      print('Error in markAllMessagesAsRead: $e');
+      rethrow;
     }
-
-    await batch.commit();
   }
 
   Future<void> markMessageAsDelivered(String messageId) async {
