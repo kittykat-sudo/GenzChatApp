@@ -18,9 +18,20 @@ class AuthRemoteDatasource {
     final user = _auth.currentUser;
 
     if (user != null) {
-      await _firestore.collection('session').doc(sessionId).set({
-        'user': [user.uid],
+      // Get user's name for the session
+      final userName = await getCurrentUserName() ?? 'Anonymous';
+
+      // Use 'sessions' (plural) to match your chat repository
+      await _firestore.collection('sessions').doc(sessionId).set({
+        'id': sessionId,
+        'users': [user.uid], // Changed from 'user' to 'users' array
+        'userNames': {
+          user.uid: userName, // Map of userId to userName
+        },
+        'status': 'temporary', // Add status field for friend requests
+        'requestedBy': null, // Track who sent friend request
         'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
       });
     }
     return sessionId;
@@ -29,8 +40,15 @@ class AuthRemoteDatasource {
   Future<void> joinSession(String sessionId) async {
     final user = _auth.currentUser;
     if (user != null) {
-      await _firestore.collection('session').doc(sessionId).update({
+      // Get user's name for the session
+      final userName = await getCurrentUserName() ?? 'Anonymous';
+
+      // Use 'sessions' (plural) to match your chat repository
+      await _firestore.collection('sessions').doc(sessionId).update({
         'users': FieldValue.arrayUnion([user.uid]),
+        'userNames.${user.uid}': userName, // Add user's name to the map
+        'updatedAt': FieldValue.serverTimestamp(),
+        // Keep status as 'temporary' until friend request is sent
       });
     }
   }

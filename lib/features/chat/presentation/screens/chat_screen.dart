@@ -1,4 +1,5 @@
 import 'package:chat_drop/core/theme/app_colors.dart';
+import 'package:chat_drop/core/utils/retro_snackbar.dart';
 import 'package:chat_drop/features/auth/presentation/providers/auth_providers.dart';
 import 'package:chat_drop/features/chat/domain/chat_session.dart';
 import 'package:chat_drop/features/chat/presentation/providers/chat_providers.dart';
@@ -79,28 +80,20 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         sessionId != null ? ref.watch(sessionProvider(sessionId)) : null;
     final messagesAsync =
         sessionId != null ? ref.watch(messagesProvider(sessionId)) : null;
-    // final friendNameAsync = ref.watch(currentChatFriendNameProvider);
     final currentUserId = FirebaseAuth.instance.currentUser?.uid;
-    final currentFriendId = ref.watch(currentChatFriendIdProvider);
-
-    // Debug prints
-    print("Session ID: $sessionId");
-    print("Current Friend ID: $currentFriendId");
-
-    // Get friend name directly from cache - no loading state!
+    // final currentFriendId = ref.watch(currentChatFriendIdProvider);
     final friendName = ref.watch(currentChatFriendNameProvider);
-    print("Friend Name from cache: $friendName");
 
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: ChatHeaderWidget(
         userName: friendName,
         lastSeen: 'Online',
-        avatarEmoji: '😊',
+        avatarEmoji: '😎',
       ),
       body: Column(
         children: [
-          // Friend request banner
+          // Enhanced Friend request banner with better logic
           sessionAsync?.when(
                 loading: () => const SizedBox.shrink(),
                 error:
@@ -115,29 +108,129 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 data: (session) {
                   if (session == null) return const SizedBox.shrink();
 
+                  print("Session status: ${session.status}"); // Debug print
+                  print("Current user ID: $currentUserId"); // Debug print
+                  print(
+                    "Session requested by: ${session.requestedBy}",
+                  ); // Debug print
+
+                  // Show "Send Friend Request" banner for temporary sessions
                   if (session.status == SessionStatus.temporary) {
                     return FriendRequestBanner(
                       message: 'Want to add $friendName as a permanent friend?',
                       buttonText: 'Send Request',
-                      onButtonPressed: () {
-                        ref
-                            .read(chatRepositoryProvider)
-                            .sendFriendRequest(sessionId!);
+                      backgroundColor: AppColors.retroBlue,
+                      onButtonPressed: () async {
+                        try {
+                          await ref
+                              .read(chatRepositoryProvider)
+                              .sendFriendRequest(sessionId!);
+                          // Show success message
+                          if (context.mounted) {
+                            showRetroSnackbar(
+                              context: context,
+                              message: 'Friend request sent to $friendName!',
+                              type: SnackbarType.success,
+                            );
+                          }
+                        } catch (e) {
+                          print('Failed to send friend request: $e');
+                          if (context.mounted) {
+                            showRetroSnackbar(
+                              context: context,
+                              message: 'Failed to send friend request: $e',
+                              type: SnackbarType.error,
+                            );
+                          }
+                        }
                       },
                     );
                   }
+
+                  // Show "Accept/Reject" banner for pending requests received by current user
                   if (session.status == SessionStatus.pending &&
+                      session.requestedBy != null &&
                       session.requestedBy != currentUserId) {
                     return FriendRequestBanner(
                       message: '$friendName sent you a friend request!',
                       buttonText: 'Accept',
-                      onButtonPressed: () {
-                        ref
-                            .read(chatRepositoryProvider)
-                            .acceptFriendRequest(sessionId!);
+                      secondaryButtonText: 'Reject',
+                      backgroundColor: AppColors.retroTeal,
+                      onButtonPressed: () async {
+                        try {
+                          await ref
+                              .read(chatRepositoryProvider)
+                              .acceptFriendRequest(sessionId!);
+                          if (context.mounted) {
+                            showRetroSnackbar(
+                              context: context,
+                              message: 'You are now friends with $friendName!',
+                              type: SnackbarType.success,
+                            );
+                          }
+                        } catch (e) {
+                          if (context.mounted) {
+                            showRetroSnackbar(
+                              context: context,
+                              message: 'Failed to send friend request: $e',
+                              type: SnackbarType.error,
+                            );
+                          }
+                        }
+                      },
+                      onSecondaryButtonPressed: () async {
+                        try {
+                          await ref
+                              .read(chatRepositoryProvider)
+                              .rejectFriendRequest(sessionId!);
+                          if (context.mounted) {
+                            showRetroSnackbar(
+                              context: context,
+                              message:
+                                  'Friend request from $friendName rejected',
+                              type: SnackbarType.error,
+                            );
+                          }
+                        } catch (e) {
+                          print('Failed to reject friend request: $e');
+                        }
                       },
                     );
                   }
+
+                  // Show "Request Sent" banner for pending requests sent by current user
+                  if (session.status == SessionStatus.pending &&
+                      session.requestedBy == currentUserId) {
+                    return FriendRequestBanner(
+                      message:
+                          'Friend request sent to $friendName. Waiting for response...',
+                      buttonText: 'Cancel Request',
+                      backgroundColor: AppColors.retroOrange,
+                      onButtonPressed: () async {
+                        try {
+                          await ref
+                              .read(chatRepositoryProvider)
+                              .rejectFriendRequest(sessionId!);
+                          if (context.mounted) {
+                            showRetroSnackbar(
+                              context: context,
+                              message: 'Friend request cancelled',
+                              type: SnackbarType.error,
+                            );
+                          }
+                        } catch (e) {
+                          if (context.mounted) {
+                            showRetroSnackbar(
+                              context: context,
+                              message: 'Failed to cancel friend request: $e',
+                              type: SnackbarType.error,
+                            );
+                          }
+                        }
+                      },
+                    );
+                  }
+
                   return const SizedBox.shrink();
                 },
               ) ??
