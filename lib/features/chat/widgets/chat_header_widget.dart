@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:chat_drop/core/theme/app_colors.dart';
+import 'package:go_router/go_router.dart';
 
 class ChatHeaderWidget extends StatelessWidget implements PreferredSizeWidget {
   final String userName;
@@ -32,7 +33,7 @@ class ChatHeaderWidget extends StatelessWidget implements PreferredSizeWidget {
             size: 20,
           ),
         ),
-        onPressed: onBackPressed ?? () => Navigator.pop(context),
+        onPressed: onBackPressed ?? () => context.go('/'),
       ),
       title: Row(
         children: [

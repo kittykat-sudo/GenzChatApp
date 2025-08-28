@@ -4,6 +4,7 @@ import 'package:chat_drop/core/widgets/retro_button.dart';
 import 'package:chat_drop/core/widgets/retro_loading_indicator.dart';
 import 'package:chat_drop/features/auth/presentation/providers/auth_providers.dart';
 import 'package:chat_drop/features/auth/widgets/retro_label.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -12,6 +13,17 @@ import 'package:qr_flutter/qr_flutter.dart';
 
 class QrGeneratorScreen extends ConsumerWidget {
   const QrGeneratorScreen({super.key});
+
+  String _generateQRData(String sessionId) {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) return sessionId;
+
+    // Format: sessionId|userId|userName
+    final userId = currentUser.uid;
+    final userName = currentUser.displayName ?? 'Anonymous User';
+
+    return '$sessionId|$userId|$userName';
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -49,8 +61,17 @@ class QrGeneratorScreen extends ConsumerWidget {
                         'assets/images/logo.svg',
                         fit: BoxFit.contain,
                         placeholderBuilder:
-                            (context) =>
-                                const Icon(Icons.chat_bubble_outline, size: 24),
+                            (context) => Container(
+                              decoration: BoxDecoration(
+                                color: AppColors.accentPink,
+                                borderRadius: BorderRadius.circular(60),
+                              ),
+                              child: const Icon(
+                                Icons.chat_bubble_outline,
+                                size: 60,
+                                color: Colors.white,
+                              ),
+                            ),
                       ),
                     ),
                     const SizedBox(height: 6),
@@ -71,17 +92,39 @@ class QrGeneratorScreen extends ConsumerWidget {
                       ),
                       child: session.when(
                         loading:
-                            () => const Center(
-                              child: RetroLoadingIndicator(),
-                            ),
+                            () => const Center(child: RetroLoadingIndicator()),
                         error:
-                            (err, stack) => Center(child: Text('Error: $err')),
+                            (err, stack) => Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  const Icon(
+                                    Icons.error_outline,
+                                    size: 48,
+                                    color: AppColors.errorRed,
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    'Error: $err',
+                                    textAlign: TextAlign.center,
+                                    style: const TextStyle(
+                                      color: AppColors.errorRed,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
                         data: (sessionId) {
-                          // Display the QR code once the session ID is available
+                          // Generate QR data with user info
+                          final qrData = _generateQRData(sessionId);
+
                           return QrImageView(
-                            data: sessionId,
+                            data: qrData,
                             version: QrVersions.auto,
                             backgroundColor: Colors.transparent,
+                            foregroundColor: AppColors.textDark,
+                            size: 210.0,
                           );
                         },
                       ),
@@ -89,7 +132,7 @@ class QrGeneratorScreen extends ConsumerWidget {
                     const SizedBox(height: 20),
 
                     // "SCAN ME" Label
-                    RetroLabel(text: "Scan me"),
+                    const RetroLabel(text: "Scan me"),
                     const Spacer(),
 
                     // Bottom Button
