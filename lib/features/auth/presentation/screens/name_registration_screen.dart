@@ -46,9 +46,15 @@ class _NameRegistrationScreenState
     });
 
     try {
+      // Sign in anonymously first
       final authRepository = ref.read(authRepositoryProvider);
       final userCredential = await authRepository.signInAnonymously();
       await authRepository.registerUserName(name);
+
+      // Complete registration and save login state
+      final authActions = ref.read(authActionsProvider);
+      await authActions.completeNameRegistration(name);
+
       print("UID: ${userCredential.user?.uid}, Name: $name");
 
       if (mounted) {
@@ -174,7 +180,11 @@ class _NameRegistrationScreenState
           Container(
             color: Colors.black.withOpacity(0.7),
             child: const Center(
-              child: RetroTypingDots(dotSize: 15, dotCount: 4, loadingText: 'Loading',),
+              child: RetroTypingDots(
+                dotSize: 15,
+                dotCount: 4,
+                loadingText: 'Loading',
+              ),
             ),
           ),
       ],

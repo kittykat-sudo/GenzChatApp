@@ -107,7 +107,6 @@ class _EditNameScreenState extends ConsumerState<EditNameScreen> {
     final currentUserNameAsync = ref.watch(currentUserNameStreamProvider);
 
     return Stack(
-      // ✅ Stack wraps the whole screen
       children: [
         Scaffold(
           backgroundColor: AppColors.background,
@@ -123,7 +122,7 @@ class _EditNameScreenState extends ConsumerState<EditNameScreen> {
               ),
               child: Stack(
                 children: [
-                  // ✅ scrollable content
+                  // scrollable content
                   SingleChildScrollView(
                     child: ConstrainedBox(
                       constraints: BoxConstraints(
@@ -262,7 +261,7 @@ class _EditNameScreenState extends ConsumerState<EditNameScreen> {
           ),
         ),
 
-        // ✅ Fullscreen loading overlay ABOVE the Scaffold
+        // Fullscreen loading overlay
         if (_isLoading)
           Container(
             color: Colors.black.withOpacity(0.7),

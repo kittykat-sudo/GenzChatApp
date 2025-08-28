@@ -2,6 +2,7 @@ import 'package:chat_drop/features/auth/presentation/screens/get_started_screen.
 import 'package:chat_drop/features/auth/presentation/screens/name_registration_screen.dart';
 import 'package:chat_drop/features/auth/presentation/screens/qr_generator_screen.dart';
 import 'package:chat_drop/features/auth/presentation/screens/qr_scanner_screen.dart';
+import 'package:chat_drop/features/auth/presentation/screens/splash_screen.dart';
 import 'package:chat_drop/features/home/presentation/home_screen.dart';
 import 'package:chat_drop/features/chat/presentation/screens/chat_screen.dart';
 import 'package:chat_drop/features/profile/presentation/friends_profile_screen.dart';
@@ -44,8 +45,12 @@ CustomTransitionPage<T> _buildFadeTransition<T>({
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
-    initialLocation: '/get-started',
+    initialLocation: '/splash',
     routes: [
+      GoRoute(
+        path: '/splash',
+        builder: (context, state) => const SplashScreen(),
+      ),
       GoRoute(
         path: '/get-started',
         name: 'get-started',
