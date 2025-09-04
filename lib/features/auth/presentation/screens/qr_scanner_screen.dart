@@ -4,17 +4,25 @@ import 'package:chat_drop/core/utils/retro_snackbar.dart';
 import 'package:chat_drop/core/widgets/retro_button.dart';
 import 'package:chat_drop/features/auth/presentation/providers/auth_providers.dart';
 import 'package:chat_drop/features/auth/widgets/retro_label.dart';
+import 'package:chat_drop/features/friends/presentation/providers/friends_providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
-class QrScannerScreen extends ConsumerWidget {
+class QrScannerScreen extends ConsumerStatefulWidget {
   const QrScannerScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<QrScannerScreen> createState() => _QrScannerScreenState();
+}
+
+class _QrScannerScreenState extends ConsumerState<QrScannerScreen> {
+  bool isProcessing = false;
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -61,43 +69,94 @@ class QrScannerScreen extends ConsumerWidget {
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(color: AppColors.border, width: 3),
                       ),
-                      // ClipRRect is used to ensure the scanner preview respects the border radius
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(13),
-                        child: MobileScanner(
-                          onDetect: (capture) async {
-                            final List<Barcode> barcodes = capture.barcodes;
-                            if (barcodes.isNotEmpty) {
-                              final String sessionId = barcodes.first.rawValue!;
-                              try {
-                                final authRepository = ref.read(
-                                  authRepositoryProvider,
-                                );
-                                await authRepository.signInAnonymously();
-                                await authRepository.joinSession(sessionId);
-                                ref.read(sessionIdProvider.notifier).state =
-                                    sessionId;
-                                if (context.mounted) {
-                                  context.go('/chat');
+                        child: Stack(
+                          children: [
+                            MobileScanner(
+                              onDetect: (capture) async {
+                                if (isProcessing) return;
+
+                                final List<Barcode> barcodes = capture.barcodes;
+                                if (barcodes.isNotEmpty) {
+                                  setState(() => isProcessing = true);
+
+                                  final String qrData =
+                                      barcodes.first.rawValue!;
+
+                                  try {
+                                    // Parse QR data (should contain sessionId and friendId and friendName)
+                                    final qrParts = qrData.split('|');
+                                    if (qrParts.length < 3) {
+                                      throw Exception('Invalid QR code format');
+                                    }
+
+                                    final sessionId = qrParts[0];
+                                    final friendId = qrParts[1];
+                                    final friendName = qrParts[2];
+
+                                    // 1. Join the session
+                                    final authRepository = ref.read(
+                                      authRepositoryProvider,
+                                    );
+                                    await authRepository.signInAnonymously();
+                                    await authRepository.joinSession(sessionId);
+
+                                    // 2. Add as temporary friend
+                                    final friendsRepository = ref.read(
+                                      friendsRepositoryProvider,
+                                    );
+                                    await friendsRepository.addTemporaryFriend(
+                                      friendId: friendId,
+                                      friendName: friendName,
+                                      sessionId: sessionId,
+                                    );
+
+                                    // 3. Set session ID
+                                    ref.read(sessionIdProvider.notifier).state =
+                                        sessionId;
+
+                                    // 4. Navigate to chat
+                                    if (context.mounted) {
+                                      context.go('/chat');
+                                      showRetroSnackbar(
+                                        context: context,
+                                        message: 'Connected with $friendName!',
+                                        type: SnackbarType.success,
+                                      );
+                                    }
+                                  } catch (e) {
+                                    setState(() => isProcessing = false);
+                                    if (context.mounted) {
+                                      showRetroSnackbar(
+                                        context: context,
+                                        message: 'Failed to connect: $e',
+                                        type: SnackbarType.error,
+                                      );
+                                    }
+                                  }
                                 }
-                              } catch (e) {
-                                if (context.mounted) {
-                                  showRetroSnackbar(
-                                    context: context,
-                                    message: 'Failed to join session: $e',
-                                    type: SnackbarType.error,
-                                  );
-                                }
-                              }
-                            }
-                          },
+                              },
+                            ),
+
+                            // Processing overlay
+                            if (isProcessing)
+                              Container(
+                                color: Colors.black54,
+                                child: const Center(
+                                  child: CircularProgressIndicator(
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                          ],
                         ),
                       ),
                     ),
                     const SizedBox(height: 20),
 
                     // "SCANNER" Label
-                    RetroLabel(text: "Scanner"),
+                    const RetroLabel(text: "Scanner"),
 
                     const Spacer(),
 

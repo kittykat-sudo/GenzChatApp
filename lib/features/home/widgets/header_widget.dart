@@ -32,9 +32,9 @@ class HeaderWidget extends StatelessWidget {
           ),
           RetroButton(
             text: '',
-            icon: Icons.qr_code,
+            icon: Icons.edit,
             onPressed: () {
-              context.push('/qr-generator');
+              context.push('/edit-name');
             },
             backgroundColor: AppColors.accentPink,
             width: 48,

@@ -4,7 +4,7 @@ import 'package:chat_drop/core/utils/retro_snackbar.dart';
 import 'package:chat_drop/core/widgets/retro_button.dart';
 import 'package:chat_drop/core/widgets/retro_typing_dots.dart';
 import 'package:chat_drop/features/auth/presentation/providers/auth_providers.dart';
-import 'package:chat_drop/features/auth/widgets/retro_text_field.dart';
+import 'package:chat_drop/core/widgets/retro_text_field.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/svg.dart';
@@ -46,9 +46,15 @@ class _NameRegistrationScreenState
     });
 
     try {
+      // Sign in anonymously first
       final authRepository = ref.read(authRepositoryProvider);
       final userCredential = await authRepository.signInAnonymously();
       await authRepository.registerUserName(name);
+
+      // Complete registration and save login state
+      final authActions = ref.read(authActionsProvider);
+      await authActions.completeNameRegistration(name);
+
       print("UID: ${userCredential.user?.uid}, Name: $name");
 
       if (mounted) {
@@ -174,7 +180,11 @@ class _NameRegistrationScreenState
           Container(
             color: Colors.black.withOpacity(0.7),
             child: const Center(
-              child: RetroTypingDots(dotSize: 15, dotCount: 4, loadingText: 'Loading',),
+              child: RetroTypingDots(
+                dotSize: 15,
+                dotCount: 4,
+                loadingText: 'Loading',
+              ),
             ),
           ),
       ],
