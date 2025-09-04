@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:chat_drop/core/theme/app_text_styles.dart';
 import 'package:chat_drop/core/utils/retro_snackbar.dart';
@@ -37,6 +38,8 @@ class _ChatFooterWidgetState extends State<ChatFooterWidget>
   bool _isInitialized = false;
   bool _isRecorderBusy = false;
   final int _maxRetries = 3;
+  DateTime? _recordingStartTime;
+  Duration? _recordingDuration;
 
   @override
   void initState() {
@@ -243,6 +246,8 @@ class _ChatFooterWidgetState extends State<ChatFooterWidget>
         numChannels: 1, // Mono recording
       );
 
+      _recordingStartTime = DateTime.now();
+
       setState(() {
         _isRecording = true;
       });
@@ -295,6 +300,12 @@ class _ChatFooterWidgetState extends State<ChatFooterWidget>
       _isRecorderBusy = true;
 
       final path = await _recorder!.stopRecorder();
+
+      // Calculate recording duration
+      if (_recordingStartTime != null) {
+        _recordingDuration = DateTime.now().difference(_recordingStartTime!);
+        print('📏 Recording duration: ${_recordingDuration!.inMilliseconds}ms');
+      }
 
       setState(() {
         _isRecording = false;
@@ -611,6 +622,7 @@ class _ChatFooterWidgetState extends State<ChatFooterWidget>
   }
 
   // Enhanced voice message sending with file data
+  // Enhanced voice message sending with file data
   Future<void> _sendVoiceMessageWithData(String audioPath) async {
     try {
       final file = File(audioPath);
@@ -643,12 +655,16 @@ class _ChatFooterWidgetState extends State<ChatFooterWidget>
         return;
       }
 
-      // Create voice message data object
+      final duration =
+          _recordingDuration?.inMilliseconds ??
+          (fileSize / 2000).round() * 1000;
+
+      // Create voice message data object with duration
       final voiceMessageData = {
         'type': 'voice',
         'fileName': fileName,
         'fileSize': fileSize,
-        'duration': 0, // You can add duration calculation if needed
+        'duration': duration,
         'audioData': base64Audio,
         'timestamp': DateTime.now().millisecondsSinceEpoch,
       };
