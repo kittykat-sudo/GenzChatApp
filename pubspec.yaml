@@ -48,6 +48,7 @@ dependencies:
   sqflite: ^2.4.2
   rxdart: ^0.28.0
   shared_preferences: ^2.5.3
+  flutter_launcher_icons: ^0.14.4
 
 dev_dependencies:
   flutter_test:
@@ -63,6 +64,14 @@ dev_dependencies:
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
 
+flutter_launcher_icons:
+  android: "launcher_icon"
+  ios: true
+  image_path: "assets/icons/app_icon.png"
+  min_android_sdk: 21
+  background_color: "#000000"
+  remove_alpha_ios: true
+
 # The following section is specific to Flutter packages.
 flutter:
   # The following line ensures that the Material Icons font is
@@ -74,6 +83,7 @@ flutter:
   assets:
     - assets/images/
     - assets/lotties/
+    - assets/icons/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
