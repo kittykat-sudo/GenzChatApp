@@ -15,7 +15,11 @@ class ContactListWidget extends ConsumerWidget {
   const ContactListWidget({super.key});
 
   // Helper method to format last message for display
-  String _formatLastMessage(String? lastMessage, String friendId, String? currentUserId) {
+  String _formatLastMessage(
+    String? lastMessage,
+    String friendId,
+    String? currentUserId,
+  ) {
     if (lastMessage == null || lastMessage.isEmpty) {
       return 'No messages yet';
     }
@@ -36,7 +40,7 @@ class ContactListWidget extends ConsumerWidget {
     if (lastMessage.length > 30) {
       return '${lastMessage.substring(0, 30)}...';
     }
-    
+
     return lastMessage;
   }
 
@@ -81,12 +85,12 @@ class ContactListWidget extends ConsumerWidget {
                   itemCount: friends.length,
                   itemBuilder: (context, index) {
                     final friend = friends[index];
-                    
+
                     // Format the last message for display
                     final displayMessage = _formatLastMessage(
-                      friend.lastMessage, 
-                      friend.id, 
-                      currentUserId
+                      friend.lastMessage,
+                      friend.id,
+                      currentUserId,
                     );
 
                     return ContactCard(
@@ -96,6 +100,7 @@ class ContactListWidget extends ConsumerWidget {
                       name: friend.name,
                       message: displayMessage, // Use formatted message
                       avatar: friend.avatar ?? '😊',
+                      userId: friend.id,
                       isOnline: friend.isOnline, // Real online status
                       isRead: friend.isRead, // Real read status
                       unreadCount:
