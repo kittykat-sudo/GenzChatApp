@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:chat_drop/core/theme/app_colors.dart';
+import 'package:chat_drop/core/widgets/user_avatar.dart'; // Add this import
+import 'package:chat_drop/core/services/avatar_service.dart';
 
 class ContactCard extends StatelessWidget {
   final String name;
   final String message;
-  final String avatar;
+  final String avatar; // Keep for backward compatibility
+  final String? userId;
   final bool isOnline;
   final bool isRead;
   final int? unreadCount;
@@ -16,6 +19,7 @@ class ContactCard extends StatelessWidget {
     required this.name,
     required this.message,
     required this.avatar,
+    this.userId,
     required this.isOnline,
     required this.isRead,
     this.unreadCount,
@@ -30,7 +34,7 @@ class ContactCard extends StatelessWidget {
         onTap: onTap ?? () => context.push('/chat'),
         splashColor: AppColors.accentPink.withOpacity(0.6),
         child: Container(
-          width: double.infinity, 
+          width: double.infinity,
           padding: const EdgeInsets.symmetric(vertical: 12.0),
           child: Padding(
             padding: const EdgeInsets.symmetric(
@@ -40,41 +44,16 @@ class ContactCard extends StatelessWidget {
             child: Row(
               children: [
                 // Profile Picture with Online Status
-                Stack(
-                  children: [
-                    Container(
-                      width: 48,
-                      height: 48,
-                      decoration: BoxDecoration(
-                        color: AppColors.accentPink.withOpacity(0.5),
-                        shape: BoxShape.circle,
-                        border: Border.all(color: AppColors.border, width: 1),
-                      ),
-                      child: Center(
-                        child: Text(
-                          avatar,
-                          style: const TextStyle(fontSize: 24),
-                        ),
-                      ),
-                    ),
-                    if (isOnline)
-                      Positioned(
-                        bottom: 2,
-                        right: 2,
-                        child: Container(
-                          width: 12,
-                          height: 12,
-                          decoration: const BoxDecoration(
-                            color: AppColors.onlineStatus,
-                            shape: BoxShape.circle,
-                            border: Border.fromBorderSide(
-                              BorderSide(color: AppColors.background, width: 2),
-                            ),
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
+                userId != null
+                    ? UserAvatar(
+                      userId: userId!,
+                      userName: name,
+                      size: 48,
+                      showOnlineStatus: true,
+                      isOnline: isOnline,
+                      style: AvatarStyle.dicebear, 
+                    )
+                    : _buildFallbackAvatar(), // Fallback for backward compatibility
 
                 const SizedBox(width: 12),
 
@@ -138,6 +117,42 @@ class ContactCard extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+
+  // Fallback avatar for backward compatibility
+  Widget _buildFallbackAvatar() {
+    return Stack(
+      children: [
+        Container(
+          width: 48,
+          height: 48,
+          decoration: BoxDecoration(
+            color: AppColors.accentPink.withOpacity(0.5),
+            shape: BoxShape.circle,
+            border: Border.all(color: AppColors.border, width: 1),
+          ),
+          child: Center(
+            child: Text(avatar, style: const TextStyle(fontSize: 24)),
+          ),
+        ),
+        if (isOnline)
+          Positioned(
+            bottom: 2,
+            right: 2,
+            child: Container(
+              width: 12,
+              height: 12,
+              decoration: const BoxDecoration(
+                color: AppColors.onlineStatus,
+                shape: BoxShape.circle,
+                border: Border.fromBorderSide(
+                  BorderSide(color: AppColors.background, width: 2),
+                ),
+              ),
+            ),
+          ),
+      ],
     );
   }
 }

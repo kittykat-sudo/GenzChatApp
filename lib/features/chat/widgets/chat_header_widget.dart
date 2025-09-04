@@ -3,11 +3,14 @@ import 'package:chat_drop/core/theme/app_colors.dart';
 import 'package:chat_drop/core/widgets/retro_popup_menu.dart';
 import 'package:chat_drop/core/widgets/retro_confirmation_dialog.dart';
 import 'package:go_router/go_router.dart';
+import 'package:chat_drop/core/widgets/user_avatar.dart'; // Add this import
+import 'package:chat_drop/core/services/avatar_service.dart';
 
 class ChatHeaderWidget extends StatelessWidget implements PreferredSizeWidget {
   final String userName;
   final String lastSeen;
   final String avatarEmoji;
+  final String? userId;
   final VoidCallback? onBackPressed;
   final VoidCallback? onClearChat;
   final VoidCallback? onRemoveFriend;
@@ -17,6 +20,7 @@ class ChatHeaderWidget extends StatelessWidget implements PreferredSizeWidget {
     required this.userName,
     required this.lastSeen,
     required this.avatarEmoji,
+    this.userId,
     this.onBackPressed,
     this.onClearChat,
     this.onRemoveFriend,
@@ -116,18 +120,17 @@ class ChatHeaderWidget extends StatelessWidget implements PreferredSizeWidget {
       ),
       title: Row(
         children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: AppColors.accentPink.withOpacity(0.5),
-              shape: BoxShape.circle,
-              border: Border.all(color: AppColors.border, width: 2),
-            ),
-            child: Center(
-              child: Text(avatarEmoji, style: const TextStyle(fontSize: 20)),
-            ),
-          ),
+          userId != null
+              ? UserAvatar(
+                userId: userId!,
+                userName: userName,
+                size: 40,
+                showOnlineStatus: true,
+                isOnline: true, 
+                style: AvatarStyle.dicebear,
+              )
+              : _buildFallbackAvatar(),
+
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -174,6 +177,21 @@ class ChatHeaderWidget extends StatelessWidget implements PreferredSizeWidget {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildFallbackAvatar() {
+    return Container(
+      width: 40,
+      height: 40,
+      decoration: BoxDecoration(
+        color: AppColors.accentPink.withOpacity(0.5),
+        shape: BoxShape.circle,
+        border: Border.all(color: AppColors.border, width: 2),
+      ),
+      child: Center(
+        child: Text(avatarEmoji, style: const TextStyle(fontSize: 20)),
+      ),
     );
   }
 
