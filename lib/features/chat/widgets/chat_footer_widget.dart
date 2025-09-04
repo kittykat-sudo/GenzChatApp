@@ -696,22 +696,18 @@ class _ChatFooterWidgetState extends State<ChatFooterWidget>
   Widget build(BuildContext context) {
     return SafeArea(
       child: Container(
-        padding: const EdgeInsets.only(top: 16, left: 16, right: 16, bottom: 10),
+        padding: const EdgeInsets.only(
+          top: 16,
+          left: 16,
+          right: 16,
+          bottom: 10,
+        ),
         decoration: BoxDecoration(
           color: AppColors.background,
           border: Border(top: BorderSide(color: AppColors.border, width: 2)),
         ),
         child: Row(
           children: [
-            RetroButton(
-              text: '',
-              icon: Icons.attach_file,
-              onPressed: widget.onAttachmentPressed ?? () {},
-              backgroundColor: AppColors.primaryYellow,
-              width: 48,
-              height: 48,
-            ),
-            const SizedBox(width: 12),
             Expanded(
               child: Container(
                 decoration: BoxDecoration(
