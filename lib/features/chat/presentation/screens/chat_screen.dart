@@ -12,6 +12,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'dart:convert';
+import 'dart:io';
+import 'package:path_provider/path_provider.dart';
 
 class ChatScreen extends ConsumerStatefulWidget {
   const ChatScreen({super.key});
@@ -74,6 +77,112 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         });
       }
     }
+  }
+
+  Future<void> _sendVoiceMessage(String voiceData) async {
+    try {
+      final sessionId = ref.read(sessionIdProvider);
+      if (sessionId == null) {
+        print('No session ID available');
+        return;
+      }
+
+      // Check if this is JSON voice data or just a file path
+      Map<String, dynamic>? voiceMessageData;
+      try {
+        voiceMessageData = jsonDecode(voiceData);
+      } catch (e) {
+        // If JSON decode fails, treat as file path (fallback)
+        print('Received file path instead of JSON: $voiceData');
+        await ref
+            .read(chatRepositoryProvider)
+            .sendMessage(sessionId, "🎤 Voice message");
+        return;
+      }
+
+      // Send the JSON voice message data
+      if (voiceMessageData != null) {
+        await ref
+            .read(chatRepositoryProvider)
+            .sendMessage(sessionId, voiceData); // Send the full JSON
+
+        print('Voice message sent successfully');
+      }
+
+      // Scroll to bottom after sending voice message
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_scrollController.hasClients) {
+          _scrollController.animateTo(
+            _scrollController.position.maxScrollExtent,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeOut,
+          );
+        }
+      });
+    } catch (e) {
+      print('Failed to send voice message: $e');
+      if (mounted) {
+        showRetroSnackbar(
+          context: context,
+          message: 'Failed to send voice message: $e',
+          type: SnackbarType.error,
+        );
+      }
+    }
+  }
+
+  void handleReceivedMessage(String messageData) {
+    try {
+      // Try to parse as voice message
+      final data = jsonDecode(messageData);
+
+      if (data['type'] == 'voice') {
+        // Handle voice message
+        _saveAndDisplayVoiceMessage(data);
+      } else {
+        // Handle regular text message
+        _displayTextMessage(messageData);
+      }
+    } catch (e) {
+      // If JSON parsing fails, treat as regular text
+      _displayTextMessage(messageData);
+    }
+  }
+
+  Future<void> _saveAndDisplayVoiceMessage(
+    Map<String, dynamic> voiceData,
+  ) async {
+    try {
+      // Decode base64 audio data
+      final audioBytes = base64Decode(voiceData['audioData']);
+
+      // Save to local file
+      final directory = await getApplicationDocumentsDirectory();
+      final fileName =
+          voiceData['fileName'] ??
+          'received_voice_${DateTime.now().millisecondsSinceEpoch}.aac';
+      final localFile = File('${directory.path}/$fileName');
+
+      await localFile.writeAsBytes(audioBytes);
+
+      // For now, we'll add the voice message to the regular message flow
+      // Later you can create a custom voice message widget
+      final sessionId = ref.read(sessionIdProvider);
+      if (sessionId != null) {
+        // Create a special message indicating it's a voice message
+        // You'll need to modify your message handling to support voice messages
+        print('Voice message saved to: ${localFile.path}');
+        print('Voice message metadata: $voiceData');
+      }
+    } catch (e) {
+      print('Error handling voice message: $e');
+    }
+  }
+
+  void _displayTextMessage(String messageText) {
+    // This is handled by your existing message flow
+    // The message will appear in the chat normally
+    print('Displaying text message: $messageText');
   }
 
   void _handleClearChat() async {
@@ -359,7 +468,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                             ),
                             const SizedBox(height: 16),
                             Text(
-                              'Begin your conversation with $friendName!',
+                              'Start chatting with $friendName!',
                               style: const TextStyle(
                                 fontSize: 18,
                                 color: AppColors.textGrey,
@@ -367,7 +476,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                             ),
                             const SizedBox(height: 8),
                             const Text(
-                              'Type a note to get things rolling',
+                              'Send a message to begin the conversation.',
                               style: TextStyle(color: AppColors.textGrey),
                             ),
                           ],
@@ -431,6 +540,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           ChatFooterWidget(
             messageController: _messageController,
             onSendMessage: _sendMessage,
+            onVoiceMessageSent: _sendVoiceMessage,
           ),
         ],
       ),
