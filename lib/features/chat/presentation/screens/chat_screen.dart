@@ -184,10 +184,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   }
 
   // Add this method to integrate voice message handling into your message stream:
-  void _processIncomingMessage(String messageContent) {
-    // This method should be called when you receive messages from your backend
-    handleReceivedMessage(messageContent);
-  }
+  // void _processIncomingMessage(String messageContent) {
+  //   // This method should be called when you receive messages from your backend
+  //   handleReceivedMessage(messageContent);
+  // }
 
   @override
   Widget build(BuildContext context) {

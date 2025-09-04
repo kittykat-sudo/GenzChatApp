@@ -1,11 +1,13 @@
 import 'dart:io';
+import 'package:chat_drop/core/theme/app_text_styles.dart';
+import 'package:chat_drop/core/utils/retro_snackbar.dart';
 import 'package:flutter/material.dart';
 import 'package:chat_drop/core/theme/app_colors.dart';
 import 'package:chat_drop/core/widgets/retro_button.dart';
 import 'package:flutter_sound/flutter_sound.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:path_provider/path_provider.dart';
-import 'dart:convert'; // Add this import for JSON encoding
+import 'dart:convert';
 
 class ChatFooterWidget extends StatefulWidget {
   final TextEditingController messageController;
@@ -34,7 +36,6 @@ class _ChatFooterWidgetState extends State<ChatFooterWidget>
   String? _recordingPath;
   bool _isInitialized = false;
   bool _isRecorderBusy = false;
-  int _initRetryCount = 0;
   final int _maxRetries = 3;
 
   @override
@@ -108,7 +109,6 @@ class _ChatFooterWidgetState extends State<ChatFooterWidget>
 
       setState(() {
         _isInitialized = true;
-        _initRetryCount = 0;
       });
 
       print('✅ Audio recorder initialized successfully');
@@ -193,7 +193,13 @@ class _ChatFooterWidgetState extends State<ChatFooterWidget>
       if (micPermission != PermissionStatus.granted) {
         final result = await Permission.microphone.request();
         if (result != PermissionStatus.granted) {
-          _showSnackBar('Microphone permission denied', Colors.red);
+          if (mounted) {
+            showRetroSnackbar(
+              context: context,
+              message: 'Microphone permission denied',
+              type: SnackbarType.error,
+            );
+          }
           return;
         }
       }
@@ -208,7 +214,13 @@ class _ChatFooterWidgetState extends State<ChatFooterWidget>
       if (!_isInitialized || _recorder == null) {
         await _initRecorderWithRetry();
         if (!_isInitialized) {
-          _showSnackBar('Unable to initialize recorder', Colors.red);
+          if (mounted) {
+            showRetroSnackbar(
+              context: context,
+              message: 'Unable to initialize recorder',
+              type: SnackbarType.error,
+            );
+          }
           return;
         }
       }
@@ -235,7 +247,13 @@ class _ChatFooterWidgetState extends State<ChatFooterWidget>
         _isRecording = true;
       });
 
-      _showSnackBar('🎤 Recording... Tap to stop', Colors.orange);
+      if (mounted) {
+        showRetroSnackbar(
+          context: context,
+          message: 'Recording... Tap to stop',
+          type: SnackbarType.info,
+        );
+      }
     } catch (e) {
       print('❌ Error starting recording: $e');
 
@@ -247,7 +265,13 @@ class _ChatFooterWidgetState extends State<ChatFooterWidget>
         errorMessage = 'Microphone permission required';
       }
 
-      _showSnackBar(errorMessage, Colors.red);
+      if (mounted) {
+        showRetroSnackbar(
+          context: context,
+          message: errorMessage,
+          type: SnackbarType.error,
+        );
+      }
 
       // Reset state and attempt reinit
       setState(() {
@@ -285,17 +309,41 @@ class _ChatFooterWidgetState extends State<ChatFooterWidget>
             print('✅ Recording saved: $path (${fileSize} bytes)');
             _showPlaybackDialog(path);
           } else {
-            _showSnackBar('Recording too short', Colors.orange);
+            if (mounted) {
+              showRetroSnackbar(
+                context: context,
+                message: 'Recording too short',
+                type: SnackbarType.info,
+              );
+            }
           }
         } else {
-          _showSnackBar('Recording file not found', Colors.red);
+          if (mounted) {
+            showRetroSnackbar(
+              context: context,
+              message: 'Recording file not found',
+              type: SnackbarType.error,
+            );
+          }
         }
       } else {
-        _showSnackBar('Recording failed', Colors.red);
+        if (mounted) {
+          showRetroSnackbar(
+            context: context,
+            message: 'Recording failed',
+            type: SnackbarType.error,
+          );
+        }
       }
     } catch (e) {
       print('❌ Error stopping recording: $e');
-      _showSnackBar('Failed to save recording', Colors.red);
+      if (mounted) {
+        showRetroSnackbar(
+          context: context,
+          message: 'Failed to save recording',
+          type: SnackbarType.error,
+        );
+      }
 
       setState(() {
         _isRecording = false;
@@ -320,7 +368,13 @@ class _ChatFooterWidgetState extends State<ChatFooterWidget>
       if (_player == null || !_isInitialized) {
         await _initRecorderWithRetry();
         if (!_isInitialized) {
-          _showSnackBar('Player not available', Colors.red);
+          if (mounted) {
+            showRetroSnackbar(
+              context: context,
+              message: 'Player not available',
+              type: SnackbarType.error,
+            );
+          }
           return;
         }
       }
@@ -345,7 +399,13 @@ class _ChatFooterWidgetState extends State<ChatFooterWidget>
       });
     } catch (e) {
       print('❌ Error playing recording: $e');
-      _showSnackBar('Failed to play recording', Colors.red);
+      if (mounted) {
+        showRetroSnackbar(
+          context: context,
+          message: 'Failed to play recording',
+          type: SnackbarType.error,
+        );
+      }
     }
   }
 
@@ -372,98 +432,151 @@ class _ChatFooterWidgetState extends State<ChatFooterWidget>
       builder: (BuildContext context) {
         return StatefulBuilder(
           builder: (context, setDialogState) {
-            return AlertDialog(
-              backgroundColor: AppColors.background,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-                side: const BorderSide(color: AppColors.border, width: 2),
-              ),
-              title: const Text(
-                '🎤 Voice Message',
-                style: TextStyle(
-                  color: AppColors.textDark,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text(
-                    'Listen to your recording:',
-                    style: TextStyle(color: AppColors.textDark),
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      IconButton(
-                        onPressed: () async {
-                          if (_isPlaying) {
-                            await _stopPlayback();
-                            setDialogState(() {
-                              _isPlaying = false;
-                            });
-                          } else {
-                            await _playRecording(audioPath);
-                            setDialogState(() {
-                              _isPlaying = true;
-                            });
-                          }
-                        },
-                        icon: Icon(
-                          _isPlaying ? Icons.stop : Icons.play_arrow,
-                          color: AppColors.accentPink,
-                          size: 32,
-                        ),
-                      ),
-                      IconButton(
-                        onPressed: () {
-                          Navigator.of(context).pop();
-                          Future.delayed(const Duration(milliseconds: 300), () {
-                            _startRecording();
-                          });
-                        },
-                        icon: const Icon(
-                          Icons.refresh,
-                          color: AppColors.primaryYellow,
-                          size: 32,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                    if (_isPlaying) _stopPlayback();
-                  },
-                  child: const Text(
-                    'Cancel',
-                    style: TextStyle(color: AppColors.textGrey),
-                  ),
-                ),
-                TextButton(
-                  onPressed: () async {
-                    Navigator.of(context).pop();
-                    if (_isPlaying) _stopPlayback();
-
-                    // Use enhanced voice message sending
-                    await _sendVoiceMessageWithData(audioPath);
-                  },
-                  style: TextButton.styleFrom(
-                    backgroundColor: AppColors.accentPink,
-                  ),
-                  child: const Text(
-                    'Send',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
+            return Dialog(
+              backgroundColor: Colors.transparent,
+              child: Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: AppColors.retroPink,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppColors.border, width: 3),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: AppColors.border,
+                      offset: Offset(6, 6),
+                      blurRadius: 0,
                     ),
-                  ),
+                  ],
                 ),
-              ],
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Title with retro style
+                    Text(
+                      'Voice Message',
+                      style: AppTextStyles.heading.copyWith(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textDark,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Message
+                    Text(
+                      'Listen to your recording:',
+                      style: AppTextStyles.body.copyWith(
+                        fontSize: 16,
+                        color: AppColors.textDark,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Playback controls with retro buttons
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        // Play/Stop button - icon only
+                        Container(
+                          decoration: BoxDecoration(
+                            color: AppColors.accentPink,
+                            borderRadius: BorderRadius.circular(50),
+                          ),
+                          child: IconButton(
+                            icon: Icon(
+                              _isPlaying ? Icons.stop : Icons.play_arrow,
+                              color: AppColors.textDark,
+                              size: 28,
+                            ),
+                            onPressed: () async {
+                              if (_isPlaying) {
+                                await _stopPlayback();
+                                setDialogState(() {
+                                  _isPlaying = false;
+                                });
+                              } else {
+                                await _playRecording(audioPath);
+                                setDialogState(() {
+                                  _isPlaying = true;
+                                });
+                              }
+                            },
+                            style: IconButton.styleFrom(
+                              padding: const EdgeInsets.all(12),
+                              backgroundColor: AppColors.accentPink,
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(width: 16),
+
+                        // Re-record button - icon only
+                        Container(
+                          decoration: BoxDecoration(
+                            color: AppColors.primaryYellow,
+                            borderRadius: BorderRadius.circular(50),
+                          ),
+                          child: IconButton(
+                            icon: const Icon(
+                              Icons.refresh,
+                              color: AppColors.textDark,
+                              size: 28,
+                            ),
+                            onPressed: () {
+                              Navigator.of(context).pop();
+                              Future.delayed(
+                                const Duration(milliseconds: 300),
+                                () {
+                                  _startRecording();
+                                },
+                              );
+                            },
+                            style: IconButton.styleFrom(
+                              padding: const EdgeInsets.all(12),
+                              backgroundColor: AppColors.primaryYellow,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Action buttons
+                    Row(
+                      children: [
+                        Expanded(
+                          child: RetroButton(
+                            text: 'Cancel',
+                            onPressed: () {
+                              Navigator.of(context).pop();
+                              if (_isPlaying) _stopPlayback();
+                            },
+                            backgroundColor: AppColors.textGrey,
+                            textColor: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: RetroButton(
+                            text: 'Send',
+                            onPressed: () async {
+                              Navigator.of(context).pop();
+                              if (_isPlaying) _stopPlayback();
+
+                              // Use enhanced voice message sending
+                              await _sendVoiceMessageWithData(audioPath);
+                            },
+                            backgroundColor: AppColors.accentPink,
+                            textColor: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
             );
           },
         );
@@ -471,27 +584,15 @@ class _ChatFooterWidgetState extends State<ChatFooterWidget>
     );
   }
 
-  void _showSnackBar(String message, Color color) {
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(message),
-          backgroundColor: color,
-          duration: const Duration(seconds: 2),
-        ),
-      );
-    }
-  }
-
-  void _sendVoiceMessage(String audioPath) {
-    if (widget.onVoiceMessageSent != null) {
-      // Send the actual file path/data, not just text
-      widget.onVoiceMessageSent!(audioPath);
-      _showSnackBar('Voice message sent!', Colors.green);
-    } else {
-      _showSnackBar('Voice message handler not set.', Colors.red);
-    }
-  }
+  // void _sendVoiceMessage(String audioPath) {
+  //   if (widget.onVoiceMessageSent != null) {
+  //     // Send the actual file path/data, not just text
+  //     widget.onVoiceMessageSent!(audioPath);
+  //     _showSnackBar('Voice message sent!', Colors.green);
+  //   } else {
+  //     _showSnackBar('Voice message handler not set.', Colors.red);
+  //   }
+  // }
 
   // Add this method to convert audio to base64 for transmission
   Future<String?> _convertAudioToBase64(String filePath) async {
@@ -514,7 +615,13 @@ class _ChatFooterWidgetState extends State<ChatFooterWidget>
     try {
       final file = File(audioPath);
       if (!await file.exists()) {
-        _showSnackBar('Voice file not found', Colors.red);
+        if (mounted) {
+          showRetroSnackbar(
+            context: context,
+            message: 'Voice note not found',
+            type: SnackbarType.error,
+          );
+        }
         return;
       }
 
@@ -526,7 +633,13 @@ class _ChatFooterWidgetState extends State<ChatFooterWidget>
       final base64Audio = await _convertAudioToBase64(audioPath);
 
       if (base64Audio == null) {
-        _showSnackBar('Failed to process voice message', Colors.red);
+        if (mounted) {
+          showRetroSnackbar(
+            context: context,
+            message: 'Failed to send voice message',
+            type: SnackbarType.error,
+          );
+        }
         return;
       }
 
@@ -543,11 +656,23 @@ class _ChatFooterWidgetState extends State<ChatFooterWidget>
       if (widget.onVoiceMessageSent != null) {
         // Send the voice message data as JSON string
         widget.onVoiceMessageSent!(jsonEncode(voiceMessageData));
-        _showSnackBar('Voice message sent!', Colors.green);
+        if (mounted) {
+          showRetroSnackbar(
+            context: context,
+            message: 'Voice message sent!',
+            type: SnackbarType.success,
+          );
+        }
       }
     } catch (e) {
       print('Error sending voice message: $e');
-      _showSnackBar('Failed to send voice message', Colors.red);
+      if (mounted) {
+        showRetroSnackbar(
+          context: context,
+          message: 'Failed to send voice message $e',
+          type: SnackbarType.error,
+        );
+      }
     }
   }
 
