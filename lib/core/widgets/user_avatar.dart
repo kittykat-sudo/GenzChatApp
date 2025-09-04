@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:chat_drop/core/theme/app_colors.dart';
 import 'package:chat_drop/core/services/avatar_service.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 class UserAvatar extends StatelessWidget {
   final String userId;
@@ -74,6 +75,7 @@ class UserAvatar extends StatelessWidget {
       case AvatarStyle.initials:
         return _buildInitialsAvatar();
       case AvatarStyle.dicebear:
+        return _buildDicebearAvatar();
       case AvatarStyle.boring:
         return _buildNetworkAvatar();
     }
@@ -103,16 +105,55 @@ class UserAvatar extends StatelessWidget {
     );
   }
 
+  Widget _buildDicebearAvatar() {
+    final avatarUrl = AvatarService.getAvatarUrl(userId, style: style);
+
+    return SvgPicture.network(
+      avatarUrl,
+      width: size,
+      height: size,
+      fit: BoxFit.cover,
+      placeholderBuilder:
+          (context) => Container(
+            width: size,
+            height: size,
+            decoration: BoxDecoration(
+              color: Colors.grey[300],
+              shape: BoxShape.circle,
+            ),
+            child: const Center(
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+          ),
+    );
+  }
+
   Widget _buildNetworkAvatar() {
     final avatarUrl = AvatarService.getAvatarUrl(userId, style: style);
+
+    print('🖼️ Loading avatar from: $avatarUrl'); // Debug print
 
     return CachedNetworkImage(
       imageUrl: avatarUrl,
       width: size,
       height: size,
       fit: BoxFit.cover,
-      placeholder: (context, url) => _buildInitialsAvatar(),
-      errorWidget: (context, url, error) => _buildInitialsAvatar(),
+      placeholder: (context, url) {
+        print('📥 Loading avatar placeholder for: $url');
+        return Container(
+          width: size,
+          height: size,
+          decoration: BoxDecoration(
+            color: Colors.grey[300],
+            shape: BoxShape.circle,
+          ),
+          child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+        );
+      },
+      errorWidget: (context, url, error) {
+        print('❌ Avatar load failed for $url: $error');
+        return _buildInitialsAvatar();
+      },
     );
   }
 }

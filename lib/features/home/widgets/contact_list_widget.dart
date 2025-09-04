@@ -9,7 +9,7 @@ import 'package:chat_drop/core/theme/app_colors.dart';
 import 'package:chat_drop/core/theme/app_text_styles.dart';
 import 'package:chat_drop/features/home/widgets/contact_card_widget.dart';
 import 'package:chat_drop/features/friends/presentation/providers/friends_providers.dart';
-import 'dart:convert'; // Add this import
+import 'dart:convert'; 
 
 class ContactListWidget extends ConsumerWidget {
   const ContactListWidget({super.key});

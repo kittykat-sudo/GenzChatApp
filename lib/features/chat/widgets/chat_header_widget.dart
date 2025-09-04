@@ -126,10 +126,11 @@ class ChatHeaderWidget extends StatelessWidget implements PreferredSizeWidget {
                 userName: userName,
                 size: 40,
                 showOnlineStatus: true,
-                isOnline: true, // You can make this dynamic
-                style: AvatarStyle.initials,
+                isOnline: true, 
+                style: AvatarStyle.dicebear,
               )
               : _buildFallbackAvatar(),
+
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -178,6 +179,7 @@ class ChatHeaderWidget extends StatelessWidget implements PreferredSizeWidget {
       ],
     );
   }
+
   Widget _buildFallbackAvatar() {
     return Container(
       width: 40,
