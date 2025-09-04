@@ -122,19 +122,24 @@ class DatabaseHelper {
 
   // Add/update these methods in your DatabaseHelper:
 
-  Future<void> markAllMessagesAsRead(
-    String sessionId,
-    String currentUserId,
-  ) async {
+  Future<void> markAllMessagesAsRead(String sessionId, String userId) async {
     final db = await instance.database;
     await db.update(
       'messages',
       {'isRead': 1},
-      where: 'sessionId = ? AND senderId != ? AND isRead = 0',
-      whereArgs: [sessionId, currentUserId],
+      where: 'sessionId = ? AND senderId != ?',
+      whereArgs: [sessionId, userId],
     );
+  }
 
-    _emitMessages(sessionId);
+  Future<void> markMessageAsRead(String messageId) async {
+    final db = await instance.database;
+    await db.update(
+      'messages',
+      {'isRead': 1},
+      where: 'id = ?',
+      whereArgs: [messageId],
+    );
   }
 
   Future<List<MessageModel>> getLastMessage(String sessionId) async {
@@ -150,5 +155,30 @@ class DatabaseHelper {
     return List.generate(maps.length, (i) {
       return MessageModel.fromDb(maps[i]);
     });
+  }
+
+  // Clear local chat history
+  Future<void> clearChatHistory(String sessionId) async {
+    try {
+      final db = await database;
+
+      // Delete all messages for this session from local DB
+      final deletedCount = await db.delete(
+        'messages',
+        where: 'sessionId=?',
+        whereArgs: [sessionId],
+      );
+
+      print(
+        'Deleted $deletedCount messages from local database for session: $sessionId',
+      );
+
+      // Trigger stream update by refreshing the cache
+      await Future.delayed(const Duration(milliseconds: 50));
+      _emitMessages(sessionId);
+    } catch (e) {
+      print("Error clearing local chat history: $e");
+      rethrow;
+    }
   }
 }

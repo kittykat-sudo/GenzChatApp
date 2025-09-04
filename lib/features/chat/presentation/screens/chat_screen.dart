@@ -1,4 +1,5 @@
 import 'package:chat_drop/core/theme/app_colors.dart';
+import 'package:chat_drop/core/utils/retro_snackbar.dart';
 import 'package:chat_drop/features/auth/presentation/providers/auth_providers.dart';
 import 'package:chat_drop/features/chat/domain/chat_session.dart';
 import 'package:chat_drop/features/chat/presentation/providers/chat_providers.dart';
@@ -6,9 +7,11 @@ import 'package:chat_drop/features/chat/widgets/chat_footer_widget.dart';
 import 'package:chat_drop/features/chat/widgets/chat_header_widget.dart';
 import 'package:chat_drop/features/chat/widgets/chat_message_widget.dart';
 import 'package:chat_drop/features/chat/widgets/friend_request_banner.dart';
+import 'package:chat_drop/features/friends/presentation/providers/friends_providers.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 class ChatScreen extends ConsumerStatefulWidget {
   const ChatScreen({super.key});
@@ -45,8 +48,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     try {
       final chatActions = ref.read(chatActionsProvider);
       chatActions.markAllMessagesAsRead(sessionId);
+      print('Marked all messages as read for session: $sessionId');
     } catch (e) {
-      print('Failed to mark messages as read: $e');
+      print('Error marking messages as read: $e');
     }
   }
 
@@ -72,6 +76,79 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     }
   }
 
+  void _handleClearChat() async {
+    try {
+      final sessionId = ref.read(sessionIdProvider);
+      if (sessionId != null) {
+        final chatActions = ref.read(chatActionsProvider);
+        await chatActions.clearChatHistory(sessionId);
+
+        // Force rebuild by invalidating the specific providers again
+        ref.invalidate(messagesProvider(sessionId));
+
+        if (mounted) {
+          // This forces the widget to rebuild and re-read providers.
+          setState(() {});
+
+          showRetroSnackbar(
+            context: context,
+            message: "Chat history zapped! Fresh start unlocked.",
+            type: SnackbarType.success,
+          );
+        } else {
+          if (mounted) {
+            showRetroSnackbar(
+              context: context,
+              message: "No active chat session to clear.",
+              type: SnackbarType.error,
+            );
+          }
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        showRetroSnackbar(
+          context: context,
+          message: 'Oops! Couldn’t clear the chat: $e',
+          type: SnackbarType.error,
+        );
+      }
+    }
+  }
+
+  void _handleRemoveFriend() async {
+    try {
+      final friendId = ref.read(currentChatFriendIdProvider);
+      if (friendId != null) {
+        final friendActions = ref.read(friendActionsProvider);
+        await friendActions.removeFriend(friendId);
+
+        // Clear session data
+        ref.read(sessionIdProvider.notifier).state = null;
+        ref.read(currentChatFriendIdProvider.notifier).state = null;
+
+        if (mounted) {
+          showRetroSnackbar(
+            context: context,
+            message: 'Friend removed — connection terminated!',
+            type: SnackbarType.success,
+          );
+
+          // Navigate back to home
+          context.go('/');
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        showRetroSnackbar(
+          context: context,
+          message: 'Failed to remove friend: $e',
+          type: SnackbarType.error,
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final sessionId = ref.watch(sessionIdProvider);
@@ -79,28 +156,22 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         sessionId != null ? ref.watch(sessionProvider(sessionId)) : null;
     final messagesAsync =
         sessionId != null ? ref.watch(messagesProvider(sessionId)) : null;
-    // final friendNameAsync = ref.watch(currentChatFriendNameProvider);
     final currentUserId = FirebaseAuth.instance.currentUser?.uid;
-    final currentFriendId = ref.watch(currentChatFriendIdProvider);
-
-    // Debug prints
-    print("Session ID: $sessionId");
-    print("Current Friend ID: $currentFriendId");
-
-    // Get friend name directly from cache - no loading state!
+    // final currentFriendId = ref.watch(currentChatFriendIdProvider);
     final friendName = ref.watch(currentChatFriendNameProvider);
-    print("Friend Name from cache: $friendName");
 
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: ChatHeaderWidget(
         userName: friendName,
         lastSeen: 'Online',
-        avatarEmoji: '😊',
+        avatarEmoji: '😎',
+        onClearChat: _handleClearChat,
+        onRemoveFriend: _handleRemoveFriend,
       ),
       body: Column(
         children: [
-          // Friend request banner
+          // Enhanced Friend request banner with better logic
           sessionAsync?.when(
                 loading: () => const SizedBox.shrink(),
                 error:
@@ -115,29 +186,129 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 data: (session) {
                   if (session == null) return const SizedBox.shrink();
 
+                  print("Session status: ${session.status}"); // Debug print
+                  print("Current user ID: $currentUserId"); // Debug print
+                  print(
+                    "Session requested by: ${session.requestedBy}",
+                  ); // Debug print
+
+                  // Show "Send Friend Request" banner for temporary sessions
                   if (session.status == SessionStatus.temporary) {
                     return FriendRequestBanner(
                       message: 'Want to add $friendName as a permanent friend?',
                       buttonText: 'Send Request',
-                      onButtonPressed: () {
-                        ref
-                            .read(chatRepositoryProvider)
-                            .sendFriendRequest(sessionId!);
+                      backgroundColor: AppColors.retroBlue,
+                      onButtonPressed: () async {
+                        try {
+                          await ref
+                              .read(chatRepositoryProvider)
+                              .sendFriendRequest(sessionId!);
+                          // Show success message
+                          if (context.mounted) {
+                            showRetroSnackbar(
+                              context: context,
+                              message: 'Friend request sent to $friendName!',
+                              type: SnackbarType.success,
+                            );
+                          }
+                        } catch (e) {
+                          print('Failed to send friend request: $e');
+                          if (context.mounted) {
+                            showRetroSnackbar(
+                              context: context,
+                              message: 'Failed to send friend request: $e',
+                              type: SnackbarType.error,
+                            );
+                          }
+                        }
                       },
                     );
                   }
+
+                  // Show "Accept/Reject" banner for pending requests received by current user
                   if (session.status == SessionStatus.pending &&
+                      session.requestedBy != null &&
                       session.requestedBy != currentUserId) {
                     return FriendRequestBanner(
                       message: '$friendName sent you a friend request!',
                       buttonText: 'Accept',
-                      onButtonPressed: () {
-                        ref
-                            .read(chatRepositoryProvider)
-                            .acceptFriendRequest(sessionId!);
+                      secondaryButtonText: 'Reject',
+                      backgroundColor: AppColors.retroTeal,
+                      onButtonPressed: () async {
+                        try {
+                          await ref
+                              .read(chatRepositoryProvider)
+                              .acceptFriendRequest(sessionId!);
+                          if (context.mounted) {
+                            showRetroSnackbar(
+                              context: context,
+                              message: 'You are now friends with $friendName!',
+                              type: SnackbarType.success,
+                            );
+                          }
+                        } catch (e) {
+                          if (context.mounted) {
+                            showRetroSnackbar(
+                              context: context,
+                              message: 'Failed to send friend request: $e',
+                              type: SnackbarType.error,
+                            );
+                          }
+                        }
+                      },
+                      onSecondaryButtonPressed: () async {
+                        try {
+                          await ref
+                              .read(chatRepositoryProvider)
+                              .rejectFriendRequest(sessionId!);
+                          if (context.mounted) {
+                            showRetroSnackbar(
+                              context: context,
+                              message:
+                                  'Friend request from $friendName rejected',
+                              type: SnackbarType.error,
+                            );
+                          }
+                        } catch (e) {
+                          print('Failed to reject friend request: $e');
+                        }
                       },
                     );
                   }
+
+                  // Show "Request Sent" banner for pending requests sent by current user
+                  if (session.status == SessionStatus.pending &&
+                      session.requestedBy == currentUserId) {
+                    return FriendRequestBanner(
+                      message:
+                          'Friend request sent to $friendName. Waiting for response...',
+                      buttonText: 'Cancel Request',
+                      backgroundColor: AppColors.retroOrange,
+                      onButtonPressed: () async {
+                        try {
+                          await ref
+                              .read(chatRepositoryProvider)
+                              .rejectFriendRequest(sessionId!);
+                          if (context.mounted) {
+                            showRetroSnackbar(
+                              context: context,
+                              message: 'Friend request cancelled',
+                              type: SnackbarType.error,
+                            );
+                          }
+                        } catch (e) {
+                          if (context.mounted) {
+                            showRetroSnackbar(
+                              context: context,
+                              message: 'Failed to cancel friend request: $e',
+                              type: SnackbarType.error,
+                            );
+                          }
+                        }
+                      },
+                    );
+                  }
+
                   return const SizedBox.shrink();
                 },
               ) ??
@@ -188,7 +359,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                             ),
                             const SizedBox(height: 16),
                             Text(
-                              'Start chatting with $friendName!',
+                              'Begin your conversation with $friendName!',
                               style: const TextStyle(
                                 fontSize: 18,
                                 color: AppColors.textGrey,
@@ -196,7 +367,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                             ),
                             const SizedBox(height: 8),
                             const Text(
-                              'Send a message to begin the conversation.',
+                              'Type a note to get things rolling',
                               style: TextStyle(color: AppColors.textGrey),
                             ),
                           ],

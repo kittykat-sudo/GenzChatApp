@@ -16,11 +16,13 @@ abstract class ChatRepository {
   Future<String> getFriendName(String sessionId, String currentUserId);
 
   // Message status methods - simplified without MessageStatus enum
-  Future<void> markMessageAsRead(String messageId);
   Future<void> markAllMessagesAsRead(String sessionId, String currentUserId);
+  Future<void> markMessageAsRead(String messageId);
   Future<void> markMessageAsDelivered(String messageId);
   Future<void> updateMessageReadStatus(String messageId, bool isRead);
   Future<void> updateMessageSentStatus(String messageId, bool isSent);
 
   Future<List<Message>> getLastMessage(String sessionId);
+
+  Future<void> clearChatHistory(String sessionId);
 }

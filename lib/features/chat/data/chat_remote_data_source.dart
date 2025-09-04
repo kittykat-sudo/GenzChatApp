@@ -150,29 +150,42 @@ class ChatRemoteDataSource {
     }
   }
 
-  Future<void> markAllMessagesAsRead(
-    String sessionId,
-    String currentUserId,
-  ) async {
-    final messagesQuery =
-        await _firestore
-            .collection('sessions')
-            .doc(sessionId)
-            .collection('messages')
-            .where('senderId', isNotEqualTo: currentUserId)
-            .where('isRead', isEqualTo: false)
-            .get();
+  Future<void> markAllMessagesAsRead(String sessionId, String userId) async {
+    try {
+      // Get all messages in the session first (without complex query)
+      final messagesQuery =
+          await _firestore
+              .collection('sessions')
+              .doc(sessionId)
+              .collection('messages')
+              .get();
 
-    final batch = _firestore.batch();
+      final batch = _firestore.batch();
+      int updateCount = 0;
 
-    for (final doc in messagesQuery.docs) {
-      batch.update(doc.reference, {
-        'isRead': true,
-        'readAt': FieldValue.serverTimestamp(),
-      });
+      // Filter and update in memory to avoid complex Firestore query
+      for (final doc in messagesQuery.docs) {
+        final data = doc.data();
+        final senderId = data['senderId'] as String?;
+        final isRead = data['isRead'] as bool? ?? false;
+
+        // Only update messages from other users that are not read
+        if (senderId != null && senderId != userId && !isRead) {
+          batch.update(doc.reference, {'isRead': true});
+          updateCount++;
+        }
+      }
+
+      if (updateCount > 0) {
+        await batch.commit();
+        print('Marked $updateCount messages as read');
+      } else {
+        print('No messages to mark as read');
+      }
+    } catch (e) {
+      print('Error in markAllMessagesAsRead: $e');
+      rethrow;
     }
-
-    await batch.commit();
   }
 
   Future<void> markMessageAsDelivered(String messageId) async {
@@ -221,5 +234,43 @@ class ChatRemoteDataSource {
     return querySnapshot.docs.map((doc) {
       return MessageModel.fromFirestore(doc);
     }).toList();
+  }
+
+  Future<void> clearChatHistory(String sessionId) async {
+    try {
+      print("Starting to clear chat history for session: $sessionId");
+
+      final messageQuery =
+          await _firestore
+              .collection('sessions')
+              .doc(sessionId)
+              .collection('messages')
+              .get();
+
+      print('Found ${messageQuery.docs.length} messages to delete');
+
+      // Delete messages in batches (Firestore has a limit of 500 operations per batch)
+      const batchSize = 500;
+      final totalDocs = messageQuery.docs.length;
+
+      for (int i = 0; i < totalDocs; i += batchSize) {
+        final batch = _firestore.batch();
+        final endIndex =
+            (i + batchSize > totalDocs) ? totalDocs : i + batchSize;
+
+        for (int j = i; j < endIndex; j++) {
+          batch.delete(messageQuery.docs[j].reference);
+        }
+
+        await batch.commit();
+        print(
+          'Deleted batch ${(i ~/ batchSize) + 1} of ${(totalDocs / batchSize).ceil()}',
+        );
+      }
+      print('Successfully cleared chat history for session: $sessionId');
+    } catch (e) {
+      print('Error clearing chat history: $e');
+      rethrow;
+    }
   }
 }
