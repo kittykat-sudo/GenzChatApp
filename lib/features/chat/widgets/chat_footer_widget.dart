@@ -694,107 +694,109 @@ class _ChatFooterWidgetState extends State<ChatFooterWidget>
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.background,
-        border: Border(top: BorderSide(color: AppColors.border, width: 2)),
-      ),
-      child: Row(
-        children: [
-          RetroButton(
-            text: '',
-            icon: Icons.attach_file,
-            onPressed: widget.onAttachmentPressed ?? () {},
-            backgroundColor: AppColors.primaryYellow,
-            width: 48,
-            height: 48,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Container(
-              decoration: BoxDecoration(
-                color: AppColors.primaryYellow,
-                borderRadius: BorderRadius.circular(25),
-                border: Border.all(color: AppColors.border, width: 3),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.border,
-                    offset: const Offset(3, 3),
-                    blurRadius: 0,
-                    spreadRadius: 0,
-                  ),
-                ],
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: widget.messageController,
-                      style: const TextStyle(
-                        color: AppColors.textDark,
-                        fontFamily: "ZillaSlab",
-                        fontSize: 16,
-                      ),
-                      decoration: const InputDecoration(
-                        hintText: 'Type Messages......',
-                        hintStyle: TextStyle(
-                          color: AppColors.textGrey,
+    return SafeArea(
+      child: Container(
+        padding: const EdgeInsets.only(top: 16, left: 16, right: 16, bottom: 10),
+        decoration: BoxDecoration(
+          color: AppColors.background,
+          border: Border(top: BorderSide(color: AppColors.border, width: 2)),
+        ),
+        child: Row(
+          children: [
+            RetroButton(
+              text: '',
+              icon: Icons.attach_file,
+              onPressed: widget.onAttachmentPressed ?? () {},
+              backgroundColor: AppColors.primaryYellow,
+              width: 48,
+              height: 48,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Container(
+                decoration: BoxDecoration(
+                  color: AppColors.primaryYellow,
+                  borderRadius: BorderRadius.circular(25),
+                  border: Border.all(color: AppColors.border, width: 3),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.border,
+                      offset: const Offset(3, 3),
+                      blurRadius: 0,
+                      spreadRadius: 0,
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: widget.messageController,
+                        style: const TextStyle(
+                          color: AppColors.textDark,
                           fontFamily: "ZillaSlab",
                           fontSize: 16,
                         ),
-                        border: InputBorder.none,
-                        contentPadding: EdgeInsets.symmetric(
-                          horizontal: 20,
-                          vertical: 14,
+                        decoration: const InputDecoration(
+                          hintText: 'Type Messages......',
+                          hintStyle: TextStyle(
+                            color: AppColors.textGrey,
+                            fontFamily: "ZillaSlab",
+                            fontSize: 16,
+                          ),
+                          border: InputBorder.none,
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 14,
+                          ),
                         ),
+                        onSubmitted: (_) => widget.onSendMessage(),
                       ),
-                      onSubmitted: (_) => widget.onSendMessage(),
                     ),
-                  ),
-                  Container(
-                    margin: const EdgeInsets.only(right: 8),
-                    child: InkWell(
-                      onTap:
-                          (_isInitialized && !_isRecorderBusy)
-                              ? _handleMicPressed
-                              : null,
-                      child: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration:
-                            _isRecording
-                                ? BoxDecoration(
-                                  color: Colors.red.withOpacity(0.2),
-                                  shape: BoxShape.circle,
-                                )
+                    Container(
+                      margin: const EdgeInsets.only(right: 8),
+                      child: InkWell(
+                        onTap:
+                            (_isInitialized && !_isRecorderBusy)
+                                ? _handleMicPressed
                                 : null,
-                        child: Icon(
-                          _isRecording ? Icons.stop : Icons.mic,
-                          color:
-                              (_isInitialized && !_isRecorderBusy)
-                                  ? (_isRecording
-                                      ? Colors.red
-                                      : AppColors.textDark)
-                                  : AppColors.textGrey,
-                          size: 24,
+                        child: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration:
+                              _isRecording
+                                  ? BoxDecoration(
+                                    color: Colors.red.withOpacity(0.2),
+                                    shape: BoxShape.circle,
+                                  )
+                                  : null,
+                          child: Icon(
+                            _isRecording ? Icons.stop : Icons.mic,
+                            color:
+                                (_isInitialized && !_isRecorderBusy)
+                                    ? (_isRecording
+                                        ? Colors.red
+                                        : AppColors.textDark)
+                                    : AppColors.textGrey,
+                            size: 24,
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
-          ),
-          const SizedBox(width: 12),
-          RetroButton(
-            text: '',
-            icon: Icons.send,
-            onPressed: widget.onSendMessage,
-            backgroundColor: AppColors.accentPink,
-            width: 48,
-            height: 48,
-          ),
-        ],
+            const SizedBox(width: 12),
+            RetroButton(
+              text: '',
+              icon: Icons.send,
+              onPressed: widget.onSendMessage,
+              backgroundColor: AppColors.accentPink,
+              width: 48,
+              height: 48,
+            ),
+          ],
+        ),
       ),
     );
   }
