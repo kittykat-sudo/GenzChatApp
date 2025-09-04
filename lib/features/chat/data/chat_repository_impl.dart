@@ -169,4 +169,20 @@ class ChatRepositoryImpl implements ChatRepository {
       return localMessages.cast<Message>();
     }
   }
+
+  // Clear chat history
+  @override
+  Future<void> clearChatHistory(String sessionId) async {
+    try {
+      print("Clearing chat history for session: $sessionId");
+
+      await _databaseHelper.clearChatHistory(sessionId);
+      await _remoteDataSource.clearChatHistory(sessionId);
+
+      print("Successfully cleared chat history from both remote and local");
+    } catch (e) {
+      print("Failed to clear chat history: $e");
+      rethrow;
+    }
+  }
 }

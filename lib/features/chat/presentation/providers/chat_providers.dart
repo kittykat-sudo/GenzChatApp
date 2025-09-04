@@ -248,4 +248,29 @@ class ChatActions {
       yield friendsWithMessages;
     }
   });
+
+  Future<void> clearChatHistory(String sessionId) async {
+    try {
+      print(
+        "ChatActions: Strating to clear chat history for session: $sessionId",
+      );
+
+      final repository = _ref.read(chatRepositoryProvider);
+      await repository.clearChatHistory(sessionId);
+
+      // Invalidate relevant providers to refresh the UI
+      _ref.invalidate(messagesProvider(sessionId));
+      _ref.invalidate(friendsWithLiveMessagesProvider);
+
+      // Wait a bit for the invalidation to take effect
+      await Future.delayed(const Duration(milliseconds: 100));
+
+      print(
+        "ChatActions: Successfully cleared chat history and invalidated provider",
+      );
+    } catch (e) {
+      print("ChatActions: Failed to clear chat history: $e");
+      rethrow;
+    }
+  }
 }

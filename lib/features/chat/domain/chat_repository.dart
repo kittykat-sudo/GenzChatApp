@@ -23,4 +23,6 @@ abstract class ChatRepository {
   Future<void> updateMessageSentStatus(String messageId, bool isSent);
 
   Future<List<Message>> getLastMessage(String sessionId);
+
+  Future<void> clearChatHistory(String sessionId);
 }

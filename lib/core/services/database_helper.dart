@@ -156,4 +156,29 @@ class DatabaseHelper {
       return MessageModel.fromDb(maps[i]);
     });
   }
+
+  // Clear local chat history
+  Future<void> clearChatHistory(String sessionId) async {
+    try {
+      final db = await database;
+
+      // Delete all messages for this session from local DB
+      final deletedCount = await db.delete(
+        'messages',
+        where: 'sessionId=?',
+        whereArgs: [sessionId],
+      );
+
+      print(
+        'Deleted $deletedCount messages from local database for session: $sessionId',
+      );
+
+      // Trigger stream update by refreshing the cache
+      await Future.delayed(const Duration(milliseconds: 50));
+      _emitMessages(sessionId);
+    } catch (e) {
+      print("Error clearing local chat history: $e");
+      rethrow;
+    }
+  }
 }

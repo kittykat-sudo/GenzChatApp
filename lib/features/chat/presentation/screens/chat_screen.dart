@@ -7,9 +7,11 @@ import 'package:chat_drop/features/chat/widgets/chat_footer_widget.dart';
 import 'package:chat_drop/features/chat/widgets/chat_header_widget.dart';
 import 'package:chat_drop/features/chat/widgets/chat_message_widget.dart';
 import 'package:chat_drop/features/chat/widgets/friend_request_banner.dart';
+import 'package:chat_drop/features/friends/presentation/providers/friends_providers.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 class ChatScreen extends ConsumerStatefulWidget {
   const ChatScreen({super.key});
@@ -74,6 +76,79 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     }
   }
 
+  void _handleClearChat() async {
+    try {
+      final sessionId = ref.read(sessionIdProvider);
+      if (sessionId != null) {
+        final chatActions = ref.read(chatActionsProvider);
+        await chatActions.clearChatHistory(sessionId);
+
+        // Force rebuild by invalidating the specific providers again
+        ref.invalidate(messagesProvider(sessionId));
+
+        if (mounted) {
+          // This forces the widget to rebuild and re-read providers.
+          setState(() {});
+
+          showRetroSnackbar(
+            context: context,
+            message: "Chat history zapped! Fresh start unlocked.",
+            type: SnackbarType.success,
+          );
+        } else {
+          if (mounted) {
+            showRetroSnackbar(
+              context: context,
+              message: "No active chat session to clear.",
+              type: SnackbarType.error,
+            );
+          }
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        showRetroSnackbar(
+          context: context,
+          message: 'Oops! Couldn’t clear the chat: $e',
+          type: SnackbarType.error,
+        );
+      }
+    }
+  }
+
+  void _handleRemoveFriend() async {
+    try {
+      final friendId = ref.read(currentChatFriendIdProvider);
+      if (friendId != null) {
+        final friendActions = ref.read(friendActionsProvider);
+        await friendActions.removeFriend(friendId);
+
+        // Clear session data
+        ref.read(sessionIdProvider.notifier).state = null;
+        ref.read(currentChatFriendIdProvider.notifier).state = null;
+
+        if (mounted) {
+          showRetroSnackbar(
+            context: context,
+            message: 'Friend removed — connection terminated!',
+            type: SnackbarType.success,
+          );
+
+          // Navigate back to home
+          context.go('/');
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        showRetroSnackbar(
+          context: context,
+          message: 'Failed to remove friend: $e',
+          type: SnackbarType.error,
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final sessionId = ref.watch(sessionIdProvider);
@@ -91,6 +166,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         userName: friendName,
         lastSeen: 'Online',
         avatarEmoji: '😎',
+        onClearChat: _handleClearChat,
+        onRemoveFriend: _handleRemoveFriend,
       ),
       body: Column(
         children: [
@@ -282,7 +359,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                             ),
                             const SizedBox(height: 16),
                             Text(
-                              'Start chatting with $friendName!',
+                              'Begin your conversation with $friendName!',
                               style: const TextStyle(
                                 fontSize: 18,
                                 color: AppColors.textGrey,
@@ -290,7 +367,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                             ),
                             const SizedBox(height: 8),
                             const Text(
-                              'Send a message to begin the conversation.',
+                              'Type a note to get things rolling',
                               style: TextStyle(color: AppColors.textGrey),
                             ),
                           ],

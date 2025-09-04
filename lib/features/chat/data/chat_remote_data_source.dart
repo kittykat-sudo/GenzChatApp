@@ -235,4 +235,42 @@ class ChatRemoteDataSource {
       return MessageModel.fromFirestore(doc);
     }).toList();
   }
+
+  Future<void> clearChatHistory(String sessionId) async {
+    try {
+      print("Starting to clear chat history for session: $sessionId");
+
+      final messageQuery =
+          await _firestore
+              .collection('sessions')
+              .doc(sessionId)
+              .collection('messages')
+              .get();
+
+      print('Found ${messageQuery.docs.length} messages to delete');
+
+      // Delete messages in batches (Firestore has a limit of 500 operations per batch)
+      const batchSize = 500;
+      final totalDocs = messageQuery.docs.length;
+
+      for (int i = 0; i < totalDocs; i += batchSize) {
+        final batch = _firestore.batch();
+        final endIndex =
+            (i + batchSize > totalDocs) ? totalDocs : i + batchSize;
+
+        for (int j = i; j < endIndex; j++) {
+          batch.delete(messageQuery.docs[j].reference);
+        }
+
+        await batch.commit();
+        print(
+          'Deleted batch ${(i ~/ batchSize) + 1} of ${(totalDocs / batchSize).ceil()}',
+        );
+      }
+      print('Successfully cleared chat history for session: $sessionId');
+    } catch (e) {
+      print('Error clearing chat history: $e');
+      rethrow;
+    }
+  }
 }

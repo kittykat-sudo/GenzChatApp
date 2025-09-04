@@ -217,7 +217,7 @@ final friendsWithLiveMessagesProvider = StreamProvider<List<Friend>>((ref) {
                 .getMessages(friend.sessionId!)
                 .map((messages) {
                   int unreadCount = 0;
-                  String lastMessage = 'No messages yet';
+                  String lastMessage = 'Log empty';
                   DateTime? lastMessageTime;
 
                   if (messages.isNotEmpty) {

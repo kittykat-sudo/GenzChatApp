@@ -124,9 +124,9 @@ class _EmptyFriendsState extends StatelessWidget {
   Widget build(BuildContext context) {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(20.0),
+        padding: const EdgeInsets.only(top: 80.0),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisAlignment: MainAxisAlignment.start,
           children: [
             const Icon(
               Icons.people_outline,
@@ -171,9 +171,9 @@ class _LoadingState extends StatelessWidget {
   Widget build(BuildContext context) {
     return const Center(
       child: Padding(
-        padding: EdgeInsets.all(40.0),
+        padding: EdgeInsets.only(top: 80.0),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisAlignment: MainAxisAlignment.start,
           children: [
             CircularProgressIndicator(
               color: AppColors.accentPink,
