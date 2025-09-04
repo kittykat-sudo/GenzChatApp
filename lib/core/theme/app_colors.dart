@@ -15,7 +15,7 @@ class AppColors {
   static const Color retroPink = Color(0xFFFFEBED);
   static const Color retroMint = Color(0xFFC4F5E2);
   static const Color retroBeige = Color(0xFFF4E1C1);
-  static const Color retroLavender = Color(0xFFE2D4F9);
+  static const Color retroLavender = Color(0xFFC9B6F2);
 
   // Text Colors
   static const Color textDark = Color(0xFF333333);

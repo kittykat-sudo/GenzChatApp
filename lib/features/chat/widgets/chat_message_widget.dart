@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'package:chat_drop/features/chat/widgets/retro_play_pause_button.dart';
 import 'package:flutter/material.dart';
 import 'package:chat_drop/core/theme/app_colors.dart';
 import 'package:chat_drop/features/chat/domain/message.dart';
@@ -27,6 +29,12 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
   String? _localAudioPath;
   Duration _duration = Duration.zero;
   Duration _position = Duration.zero;
+  bool _durationLoaded = false;
+  Timer? _progressTimer;
+  DateTime? _playbackStartTime;
+
+  //  Stream subscription to manage properly
+  StreamSubscription<PlaybackDisposition>? _progressSubscription;
 
   @override
   void initState() {
@@ -37,6 +45,9 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
 
   @override
   void dispose() {
+    // Canel subscription before cleanup
+    _progressTimer?.cancel();
+    _progressSubscription?.cancel();
     _cleanupPlayer();
     super.dispose();
   }
@@ -55,7 +66,11 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
 
   Future<void> _cleanupPlayer() async {
     try {
-      if (_player != null) {
+      // Cancel any active subscription
+      await _progressSubscription?.cancel();
+      _progressSubscription = null;
+
+      if (_player != null && _player!.isOpen()) {
         await _player!.closePlayer();
       }
     } catch (e) {
@@ -82,6 +97,16 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
     try {
       final voiceData = jsonDecode(widget.message.content);
 
+      //  Load duration from the stored data first
+      final storedDuration = voiceData['duration'] as int?;
+      if (storedDuration != null && storedDuration > 0) {
+        setState(() {
+          _duration = Duration(milliseconds: storedDuration);
+          _durationLoaded = true;
+        });
+        print('✅ Duration loaded from data: ${storedDuration}ms');
+      }
+
       // Check if file already exists locally
       final directory = await getApplicationDocumentsDirectory();
       final fileName =
@@ -89,17 +114,69 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
           'voice_${DateTime.now().millisecondsSinceEpoch}.aac';
       final localFile = File('${directory.path}/$fileName');
 
+      // Create file if it doesn't exist
       if (!await localFile.exists()) {
-        // Decode and save the audio file
         final audioBytes = base64Decode(voiceData['audioData']);
         await localFile.writeAsBytes(audioBytes);
+        print('📁 Voice file created: ${localFile.path}');
+      } else {
+        print('📁 Voice file exists: ${localFile.path}');
       }
 
       setState(() {
         _localAudioPath = localFile.path;
       });
+      if (!_durationLoaded) {
+        await _loadAudioDurationFromFile();
+      }
     } catch (e) {
       print('Error preparing voice message: $e');
+    }
+  }
+
+  Future<void> _loadAudioDurationFromFile() async {
+    if (!_isPlayerInitialized || _localAudioPath == null) return;
+
+    try {
+      print('📏 Loading duration from audio file...');
+
+      await _player!.startPlayer(
+        fromURI: _localAudioPath!,
+        whenFinished: () {},
+      );
+
+      // Create a temporary subscription to get duration
+      StreamSubscription<PlaybackDisposition>? tempSubscription;
+      bool durationFound = false;
+
+      tempSubscription = _player!.onProgress!.listen((event) {
+        if (event.duration.inMilliseconds > 0 && !durationFound) {
+          durationFound = true;
+          setState(() {
+            _duration = event.duration;
+            _durationLoaded = true;
+          });
+
+          print(
+            '✅ Duration loaded from file: ${event.duration.inMilliseconds}ms',
+          );
+
+          // Stop playback and cancel subscription
+          _player!.stopPlayer().then((_) {
+            tempSubscription?.cancel();
+          });
+        }
+      });
+
+      // Fallback: Cancel subscription after 2 seconds
+      Future.delayed(const Duration(seconds: 2), () {
+        if (!durationFound) {
+          tempSubscription?.cancel();
+          _player!.stopPlayer();
+        }
+      });
+    } catch (e) {
+      print('❌ Error loading duration from file: $e');
     }
   }
 
@@ -108,35 +185,97 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
 
     try {
       if (_isPlaying) {
+        print('⏸️ Stopping playback');
+        // Stop playback
+        _progressTimer?.cancel();
+        _progressTimer = null;
+        await _progressSubscription?.cancel();
+        _progressSubscription = null;
+
         await _player!.stopPlayer();
         setState(() {
           _isPlaying = false;
           _position = Duration.zero;
         });
       } else {
+        print('▶️ Starting playback: $_localAudioPath');
+
+        // Record start time
+        _playbackStartTime = DateTime.now();
+
+        // Start playback
         await _player!.startPlayer(
           fromURI: _localAudioPath!,
           whenFinished: () {
-            setState(() {
-              _isPlaying = false;
-              _position = Duration.zero;
-            });
+            print('🏁 Playback finished - cleaning up');
+            _progressTimer?.cancel();
+            _progressTimer = null;
+            if (mounted) {
+              setState(() {
+                _isPlaying = false;
+                _position = Duration.zero;
+              });
+            }
           },
         );
+
         setState(() {
           _isPlaying = true;
         });
 
-        // Update position during playback
-        _player!.onProgress!.listen((event) {
-          setState(() {
-            _position = event.position;
-            _duration = event.duration;
-          });
+        // MANUAL TIMER: Update progress every 100ms
+        _progressTimer?.cancel();
+        _progressTimer = Timer.periodic(const Duration(milliseconds: 100), (
+          timer,
+        ) {
+          if (!_isPlaying || !mounted || _playbackStartTime == null) {
+            timer.cancel();
+            return;
+          }
+
+          // Calculate elapsed time since playback started
+          final elapsed = DateTime.now().difference(_playbackStartTime!);
+
+          if (elapsed <= _duration) {
+            setState(() {
+              _position = elapsed;
+            });
+
+            final progress =
+                _duration.inMilliseconds > 0
+                    ? (elapsed.inMilliseconds / _duration.inMilliseconds).clamp(
+                      0.0,
+                      1.0,
+                    )
+                    : 0.0;
+
+            print(
+              '⏱️ Manual progress: ${elapsed.inMilliseconds}ms / ${_duration.inMilliseconds}ms (${(progress * 100).toStringAsFixed(1)}%)',
+            );
+          } else {
+            // Playback should be finished
+            print('⏰ Manual timer detected end of playback');
+            timer.cancel();
+            _progressTimer = null;
+            if (mounted) {
+              setState(() {
+                _isPlaying = false;
+                _position = Duration.zero;
+              });
+            }
+          }
         });
+
+        print('✅ Playback started with manual timer tracking');
       }
     } catch (e) {
-      print('Error toggling playback: $e');
+      print('❌ Error toggling playback: $e');
+      _progressTimer?.cancel();
+      _progressTimer = null;
+      setState(() {
+        _isPlaying = false;
+        _position = Duration.zero;
+      });
     }
   }
 
@@ -145,43 +284,40 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
       return _buildTextMessage();
     }
 
+    // Print current state
+    double currentProgress = 0.0;
+    if (_durationLoaded && _duration.inMilliseconds > 0) {
+      if (_isPlaying && _position.inMilliseconds > 0) {
+        currentProgress = (_position.inMilliseconds / _duration.inMilliseconds)
+            .clamp(0.0, 1.0);
+      }
+    }
+
+    // Debug current state
+    print('🎵 Voice Message State:');
+    print('  - isPlaying: $_isPlaying');
+    print('  - position: ${_position.inMilliseconds}ms');
+    print('  - duration: ${_duration.inMilliseconds}ms');
+    print('  - durationLoaded: $_durationLoaded');
+    print('  - progress: $currentProgress');
+    print('  - localPath exists: ${_localAudioPath != null}');
+
     return Container(
       constraints: const BoxConstraints(minWidth: 200),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Play/Pause Button
-          GestureDetector(
-            onTap: _togglePlayback,
-            child: Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color:
-                    widget.isMe
-                        ? Colors.white.withOpacity(0.2)
-                        : AppColors.retroTeal.withOpacity(
-                          0.1,
-                        ), // Use retro color
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color:
-                      widget.isMe
-                          ? Colors.white.withOpacity(0.3)
-                          : AppColors.retroTeal.withOpacity(0.3),
-                  width: 1,
-                ),
-              ),
-              child: Icon(
-                _isPlaying ? Icons.pause : Icons.play_arrow,
-                color:
-                    widget.isMe
-                        ? Colors.white
-                        : AppColors.retroTeal, // Use retro color
-                size: 24,
-              ),
+          // Play/Pause Button with Retro Style
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8.0),
+            child: RetroPlayPauseButton(
+              isPlaying: _isPlaying,
+              isMe: widget.isMe,
+              onTap: _togglePlayback,
+              size: 42,
             ),
           ),
+
           const SizedBox(width: 12),
 
           // Waveform and Duration
@@ -189,33 +325,29 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Waveform
-                Container(
-                  height: 30,
+                SizedBox(height: 8),
+                // Use the calculated progress
+                SizedBox(
+                  height: 26,
                   child: CustomPaint(
                     painter: VoiceWavePainter(
-                      progress:
-                          _duration.inMilliseconds > 0
-                              ? _position.inMilliseconds /
-                                  _duration.inMilliseconds
-                              : 0.0,
+                      progress: currentProgress,
                       isMe: widget.isMe,
                     ),
-                    size: Size(double.infinity, 30),
+                    size: const Size(double.infinity, 30),
                   ),
                 ),
                 const SizedBox(height: 4),
 
                 // Duration
                 Text(
-                  _formatDuration(_isPlaying ? _position : _duration),
+                  _getDurationText(),
                   style: TextStyle(
                     fontSize: 12,
                     color:
                         widget.isMe
-                            ? Colors.white.withOpacity(0.8)
+                            ? AppColors.textDark.withOpacity(0.8)
                             : AppColors.textGrey,
-                    fontFamily: "ZillaSlab",
                   ),
                 ),
               ],
@@ -223,17 +355,40 @@ class _ChatMessageWidgetState extends State<ChatMessageWidget> {
           ),
 
           // Mic Icon
-          Icon(
-            Icons.mic,
-            color:
-                widget.isMe
-                    ? Colors.white.withOpacity(0.6)
-                    : AppColors.textGrey,
-            size: 16,
+          Padding(
+            padding: const EdgeInsets.only(left: 8.0, bottom: 8.0),
+            child: Icon(
+              Icons.mic,
+              color:
+                  widget.isMe
+                      ? AppColors.textDark.withOpacity(0.3)
+                      : AppColors.textGrey,
+              size: 24,
+            ),
           ),
         ],
       ),
     );
+  }
+
+  String _getDurationText() {
+    if (_durationLoaded) {
+      return _formatDuration(_isPlaying ? _position : _duration);
+    } else if (_isPlaying) {
+      return _formatDuration(_position);
+    } else {
+      // Try to extract duration from voice data
+      try {
+        final voiceData = jsonDecode(widget.message.content);
+        final storedDuration = voiceData['duration'] as int?;
+        if (storedDuration != null) {
+          return _formatDuration(Duration(milliseconds: storedDuration));
+        }
+      } catch (e) {
+        // Ignore
+      }
+      return "Voice message";
+    }
   }
 
   String _formatDuration(Duration duration) {
@@ -315,26 +470,54 @@ class VoiceWavePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    print('🎨 VoiceWavePainter: progress=$progress, isMe=$isMe, size=$size');
+
+    // Clamp progress to valid range
+    final clampedProgress = progress.clamp(0.0, 1.0);
+
     // Use retro color palette for played waves
     final retroColors = [
       AppColors.retroTeal,
       AppColors.retroOrange,
       AppColors.retroBlue,
-      AppColors.accentPink,
+      AppColors.retroLavender,
     ];
 
     final unplayedPaint =
         Paint()
           ..color =
               isMe
-                  ? Colors.white.withOpacity(0.3)
+                  ? AppColors.textDark.withOpacity(0.3)
                   : AppColors.textGrey.withOpacity(0.3)
           ..strokeWidth = 3
           ..strokeCap = StrokeCap.round;
 
-    final heights = [8, 4, 12, 6, 10, 3, 8, 5, 11, 7, 9, 4, 6, 8, 5, 10, 7, 9];
+    final heights = [
+      16,
+      8,
+      24,
+      12,
+      20,
+      6,
+      16,
+      10,
+      22,
+      14,
+      18,
+      8,
+      12,
+      16,
+      10,
+      20,
+      14,
+      18,
+    ];
     final spacing = size.width / heights.length;
-    final playedWidth = size.width * progress;
+    final playedWidth = size.width * clampedProgress;
+
+    print(
+      '🎨 playedWidth=$playedWidth, totalWidth=${size.width}, clampedProgress=$clampedProgress',
+    );
 
     for (int i = 0; i < heights.length; i++) {
       final x = i * spacing + spacing / 2;
@@ -349,10 +532,7 @@ class VoiceWavePainter extends CustomPainter {
         paint =
             Paint()
               ..color =
-                  isMe
-                      ? Colors
-                          .white // Keep white for sent messages
-                      : retroColors[colorIndex] // Use retro colors for received messages
+                  retroColors[colorIndex] // Use retro colors for received messages
               ..strokeWidth = 3
               ..strokeCap = StrokeCap.round;
       } else {
@@ -369,6 +549,13 @@ class VoiceWavePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) {
-    return oldDelegate is VoiceWavePainter && oldDelegate.progress != progress;
+    if (oldDelegate is! VoiceWavePainter) return true;
+
+    final shouldRepaint =
+        oldDelegate.progress != progress || oldDelegate.isMe != isMe;
+    print(
+      '🎨 shouldRepaint: $shouldRepaint (oldProgress=${oldDelegate.progress}, newProgress=$progress)',
+    );
+    return shouldRepaint;
   }
 }
