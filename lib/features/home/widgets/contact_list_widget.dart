@@ -1,4 +1,5 @@
 import 'package:chat_drop/features/auth/presentation/providers/auth_providers.dart';
+import 'package:chat_drop/features/chat/presentation/providers/chat_providers.dart';
 import 'package:chat_drop/features/friends/domain/models/friend.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
@@ -8,14 +9,42 @@ import 'package:chat_drop/core/theme/app_colors.dart';
 import 'package:chat_drop/core/theme/app_text_styles.dart';
 import 'package:chat_drop/features/home/widgets/contact_card_widget.dart';
 import 'package:chat_drop/features/friends/presentation/providers/friends_providers.dart';
+import 'dart:convert'; // Add this import
 
 class ContactListWidget extends ConsumerWidget {
   const ContactListWidget({super.key});
+
+  // Helper method to format last message for display
+  String _formatLastMessage(String? lastMessage, String friendId, String? currentUserId) {
+    if (lastMessage == null || lastMessage.isEmpty) {
+      return 'No messages yet';
+    }
+
+    // Check if it's a voice message (JSON format)
+    try {
+      final messageData = jsonDecode(lastMessage);
+      if (messageData['type'] == 'voice') {
+        // Determine if it's sent or received based on some logic
+        // You might need to add senderId to your Friend model for better detection
+        return '🎤 Voice message';
+      }
+    } catch (e) {
+      // Not JSON, treat as regular text message
+    }
+
+    // Return regular text message (truncated if too long)
+    if (lastMessage.length > 30) {
+      return '${lastMessage.substring(0, 30)}...';
+    }
+    
+    return lastMessage;
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     // Use the real-time provider instead
     final friendsAsync = ref.watch(friendsWithLiveMessagesProvider);
+    final currentUserId = ref.watch(currentUserIdProvider);
 
     return Expanded(
       child: Column(
@@ -52,12 +81,20 @@ class ContactListWidget extends ConsumerWidget {
                   itemCount: friends.length,
                   itemBuilder: (context, index) {
                     final friend = friends[index];
+                    
+                    // Format the last message for display
+                    final displayMessage = _formatLastMessage(
+                      friend.lastMessage, 
+                      friend.id, 
+                      currentUserId
+                    );
+
                     return ContactCard(
                       key: ValueKey(
                         '${friend.id}_${friend.unreadCount}_${friend.lastMessage}',
                       ),
                       name: friend.name,
-                      message: friend.lastMessage ?? 'No messages yet',
+                      message: displayMessage, // Use formatted message
                       avatar: friend.avatar ?? '😊',
                       isOnline: friend.isOnline, // Real online status
                       isRead: friend.isRead, // Real read status
