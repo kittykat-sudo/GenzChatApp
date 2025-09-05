@@ -1,3 +1,4 @@
+import 'package:chat_drop/core/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,22 +8,44 @@ import 'package:chat_drop/features/home/widgets/header_widget.dart';
 import 'package:chat_drop/features/home/widgets/search_widget.dart';
 import 'package:chat_drop/features/home/widgets/contact_list_widget.dart';
 
-class HomeScreen extends ConsumerWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    if (kDebugMode) print('🏠 HomeScreen building...');
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends ConsumerState<HomeScreen> {
+  String _searchQuery = '';
+
+  void _onSearchChanged(String query) {
+    setState(() {
+      _searchQuery = query;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    //if (kDebugMode) print('🏠 HomeScreen building...');
 
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
         child: Column(
           children: [
+            // Header
             const HeaderWidget(),
-            const SearchWidget(),
-            const SizedBox(height: 4),
-            const Expanded(child: ContactListWidget()),
+
+            const SizedBox(height: 20),
+
+            // Search widget with integrated clear button
+            SearchWidget(
+              onChanged: _onSearchChanged,
+              hintText: 'Search friends...',
+            ),
+
+            // Contact List with search
+            ContactListWidget(searchQuery: _searchQuery),
           ],
         ),
       ),

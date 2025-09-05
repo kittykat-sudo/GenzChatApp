@@ -9,13 +9,18 @@ import 'package:chat_drop/core/theme/app_colors.dart';
 import 'package:chat_drop/core/theme/app_text_styles.dart';
 import 'package:chat_drop/features/home/widgets/contact_card_widget.dart';
 import 'package:chat_drop/features/friends/presentation/providers/friends_providers.dart';
-import 'dart:convert'; // Add this import
+import 'dart:convert';
 
 class ContactListWidget extends ConsumerWidget {
-  const ContactListWidget({super.key});
+  final String searchQuery;
+  const ContactListWidget({super.key, this.searchQuery = ''});
 
   // Helper method to format last message for display
-  String _formatLastMessage(String? lastMessage, String friendId, String? currentUserId) {
+  String _formatLastMessage(
+    String? lastMessage,
+    String friendId,
+    String? currentUserId,
+  ) {
     if (lastMessage == null || lastMessage.isEmpty) {
       return 'No messages yet';
     }
@@ -36,8 +41,38 @@ class ContactListWidget extends ConsumerWidget {
     if (lastMessage.length > 30) {
       return '${lastMessage.substring(0, 30)}...';
     }
-    
+
     return lastMessage;
+  }
+
+  List<Friend> _filterFriends(List<Friend> friends, String query) {
+    if (query.isEmpty) {
+      return friends;
+    }
+
+    final lowercaseQuery = query.toLowerCase();
+    return friends.where((friend) {
+      // Search by name
+      final nameMatch = friend.name.toLowerCase().contains(lowercaseQuery);
+
+      // Search by last message content (excluding voice messages)
+      final messageMatch =
+          friend.lastMessage != null &&
+          !_isVoiceMessage(friend.lastMessage!) &&
+          friend.lastMessage!.toLowerCase().contains(lowercaseQuery);
+
+      return nameMatch || messageMatch;
+    }).toList();
+  }
+
+  // Check if message is a voice message
+  bool _isVoiceMessage(String message) {
+    try {
+      final data = jsonDecode(message);
+      return data['type'] == 'voice';
+    } catch (e) {
+      return false;
+    }
   }
 
   @override
@@ -63,8 +98,21 @@ class ContactListWidget extends ConsumerWidget {
           Expanded(
             child: friendsAsync.when(
               data: (friends) {
+                final filteredFriends = _filterFriends(friends, searchQuery);
                 if (friends.isEmpty) {
                   return const _EmptyFriendsState();
+                }
+
+                // Show no results state if search returns empty
+                if (filteredFriends.isEmpty && searchQuery.isNotEmpty) {
+                  return _NoSearchResultsState(searchQuery: searchQuery);
+                }
+
+                // Debug print to see filtering
+                if (kDebugMode) {
+                  print('📱 Total friends: ${friends.length}');
+                  print('🔍 Search query: "$searchQuery"');
+                  print('📋 Filtered friends: ${filteredFriends.length}');
                 }
 
                 // Debug print to see real-time updates
@@ -81,12 +129,12 @@ class ContactListWidget extends ConsumerWidget {
                   itemCount: friends.length,
                   itemBuilder: (context, index) {
                     final friend = friends[index];
-                    
+
                     // Format the last message for display
                     final displayMessage = _formatLastMessage(
-                      friend.lastMessage, 
-                      friend.id, 
-                      currentUserId
+                      friend.lastMessage,
+                      friend.id,
+                      currentUserId,
                     );
 
                     return ContactCard(
@@ -96,6 +144,7 @@ class ContactListWidget extends ConsumerWidget {
                       name: friend.name,
                       message: displayMessage, // Use formatted message
                       avatar: friend.avatar ?? '😊',
+                      userId: friend.id,
                       isOnline: friend.isOnline, // Real online status
                       isRead: friend.isRead, // Real read status
                       unreadCount:
@@ -150,6 +199,60 @@ class ContactListWidget extends ConsumerWidget {
     });
 
     context.push('/chat');
+  }
+}
+
+// New widget for no search results
+class _NoSearchResultsState extends StatelessWidget {
+  final String searchQuery;
+
+  const _NoSearchResultsState({required this.searchQuery});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.only(top: 80.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.start,
+          children: [
+            const Icon(Icons.search_off, size: 64, color: AppColors.textGrey),
+            const SizedBox(height: 16),
+            const Text(
+              'No results found',
+              style: TextStyle(
+                color: AppColors.textGrey,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'No friends found matching "$searchQuery"',
+              style: const TextStyle(color: AppColors.textGrey, fontSize: 14),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Try searching for:',
+              style: TextStyle(
+                color: AppColors.textGrey.withOpacity(0.8),
+                fontSize: 12,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              '• Friend\'s name\n• Message content',
+              style: TextStyle(
+                color: AppColors.textGrey.withOpacity(0.6),
+                fontSize: 12,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 
