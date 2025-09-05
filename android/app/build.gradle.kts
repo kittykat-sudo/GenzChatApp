@@ -38,6 +38,15 @@ android {
             signingConfig = signingConfigs.getByName("debug")
         }
     }
+
+    applicationVariants.all { variant ->
+        variant.outputs.all { output ->
+            def versionName = variant.versionName
+            def flavorName = variant.flavorName
+            def buildType = variant.buildType.name
+            output.outputFileName = "chatdrop-${flavorName}-${buildType}-v${versionName}.apk"
+        }
+    }
 }
 
 flutter {
