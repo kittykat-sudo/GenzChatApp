@@ -275,6 +275,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         userName: friendName,
         lastSeen: 'Online',
         avatarEmoji: '😎',
+        userId: ref.watch(currentChatFriendIdProvider),
         onClearChat: _handleClearChat,
         onRemoveFriend: _handleRemoveFriend,
       ),
