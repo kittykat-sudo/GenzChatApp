@@ -51,7 +51,7 @@ class ContactCard extends StatelessWidget {
                       size: 48,
                       showOnlineStatus: true,
                       isOnline: isOnline,
-                      style: AvatarStyle.initials, // You can change this
+                      style: AvatarStyle.dicebear, 
                     )
                     : _buildFallbackAvatar(), // Fallback for backward compatibility
 

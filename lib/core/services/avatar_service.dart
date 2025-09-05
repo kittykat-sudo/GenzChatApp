@@ -4,14 +4,14 @@ import 'dart:convert';
 
 class AvatarService {
   static const List<Color> _avatarColors = [
-    Color(0xFF6366F1), // Indigo
-    Color(0xFF8B5CF6), // Purple
-    Color(0xFFEC4899), // Pink
-    Color(0xFFEF4444), // Red
-    Color(0xFFF59E0B), // Amber
-    Color(0xFF10B981), // Emerald
-    Color(0xFF06B6D4), // Cyan
-    Color(0xFF3B82F6), // Blue
+    Color(0xFF00FF9C), // Neon Green
+    Color(0xFFFF6EC7), // Hot Pink
+    Color(0xFFFFD300), // Bright Yellow
+    Color(0xFF00BFFF), // Electric Blue
+    Color(0xFFFF5F1F), // Vivid Orange
+    Color(0xFFB200FF), // Deep Purple
+    Color(0xFF39FF14), // Laser Lime
+    Color(0xFFFF073A), // Crimson Red
   ];
 
   static const List<IconData> _avatarIcons = [
